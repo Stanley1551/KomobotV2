@@ -1,0 +1,27 @@
+﻿<Window x:Class="KomoUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:KomoUI"
+        mc:Ignorable="d"
+        Title="KomoUI" Height="800" Width="500">
+    <Grid>
+        <TabControl>
+            <TabItem Header="General">
+                <Grid>
+                    <StackPanel HorizontalAlignment="Left" Height="100" VerticalAlignment="Top" Width="100">
+                        <Button Content="Button" Click="Button_Click"/>
+                        <TextBox Height="23" TextWrapping="Wrap" Text="TextBox" Name="text"/>
+
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Server">
+                <Label Content="faszt" />
+            </TabItem>
+            <TabItem Header="Members" />
+            
+        </TabControl>
+    </Grid>
+</Window>
