@@ -147,6 +147,7 @@
     <Compile Include="DataAccess\JsonConfig.cs" />
     <Compile Include="DataAccess\JsonParser.cs" />
     <Compile Include="DataAccess\Komobase.cs" />
+    <Compile Include="DiscordEventHandler.cs" />
     <Compile Include="Logger\KomoLogger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

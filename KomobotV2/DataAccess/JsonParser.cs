@@ -23,7 +23,7 @@ namespace KomobotV2.DataAccess
 
                 }
             }
-            catch(Exception e) { Console.WriteLine(DateTime.Now + ": " + e.Message); }
+            catch(Exception e) { throw e; }
         }
 
         public JsonConfig Config 
