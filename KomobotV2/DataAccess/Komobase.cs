@@ -28,7 +28,7 @@ namespace KomobotV2.DataAccess
 
             if(MissingFile)
             {
-                string sql = "create table Users (name nvarchar(25) NULL, subscribed bit NULL, CRTag nvarchar(25) NULL, PUBGID nvarchar(50) NULL)";
+                string sql = "create table Users (name nvarchar(25) NULL, subscribed bit NULL, CRTag nvarchar(25) NULL, PUBGID nvarchar(50) NULL, isAlive bit NULL)";
 
                 SQLiteCommand cmd = new SQLiteCommand(sql, DbConnection);
                 cmd.ExecuteNonQuery();
@@ -61,9 +61,13 @@ namespace KomobotV2.DataAccess
             foreach(var member in members)
             {
                 string sql = "insert into Users(name) values('" + member.Username + "') except select name from users";
+                Execute(sql);
 
+                sql = @"update Users set isAlive = 1 where name = '" + member.Username + "'";
                 Execute(sql);
             }
+            //string membersInDb =ReadDatas("select name from users");
+            int fasz = 1;
         }
 
         public static void SubscribeUser(string userName)
@@ -139,6 +143,29 @@ namespace KomobotV2.DataAccess
             var retVal = cmd.ExecuteScalar();
 
             return retVal;
+        }
+
+        private static string ReadDatas(string query)
+        {
+            SQLiteCommand cmd = new SQLiteCommand(query, DbConnection);
+
+            var retVal = cmd.ExecuteReader(System.Data.CommandBehavior.Default);
+
+            string result= string.Empty;
+            if(retVal.HasRows)
+            {
+                for(int i=0; ;)
+                {
+                    result += retVal.GetString(i);
+                    if(retVal.NextResult())
+                    {
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            return result;
         }
         #endregion
     }

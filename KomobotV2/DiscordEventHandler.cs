@@ -29,7 +29,7 @@ namespace KomobotV2
             if (Komobase.IsSubscribed(e.Member.Username))
             {
                 //if just started playing
-                if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member))
+                if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
                 {
                     gameStartedDictionary.Add(e.Member, DateTime.Now);
                 }

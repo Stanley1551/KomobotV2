@@ -375,6 +375,7 @@ namespace KomobotV2.Logger
         }
 
         #endregion
+
         #region fields
         string logPath = @"C:\Users\Peter\Documents\Log\KomoLog.txt";
         #endregion
