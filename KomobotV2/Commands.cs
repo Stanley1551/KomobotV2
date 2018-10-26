@@ -432,6 +432,41 @@ namespace KomobotV2
 
         #endregion
 
+        #region Football data commands
+        [Command("PLStanding")]
+        public async Task GetPLStanding(CommandContext ctx)
+        {
+            string url = Program.config.footballDataEndpoint + "competitions/2021/standings";
+
+            HttpWebRequest request = HttpWebRequest.CreateHttp(url);
+            request.Headers.Set("X-Auth-Token", Program.config.footballDataKey);
+
+            var response = (HttpWebResponse)await request.GetResponseAsync();
+
+            var code = response.StatusCode;
+
+            if (HttpStatusCode.OK == code)
+            {
+                Stream stream = response.GetResponseStream();
+                StreamReader reader = new StreamReader(stream);
+
+                string resultString = await reader.ReadToEndAsync();
+
+                var result = JsonConvert.DeserializeObject<FootballDataStandingsResult>(resultString);
+
+                StringBuilder builder = new StringBuilder();
+                builder.AppendLine("Premier League tabella:");
+
+                foreach(var standing in result.standings.FirstOrDefault().table)
+                {
+                    builder.AppendLine(standing.position + ". " + standing.team.name+"\t "+standing.points+" pont, "+standing.playedGames+" meccs");
+                }
+
+                await ctx.RespondAsync(builder.ToString());
+            }
+        }
+        #endregion
+
         #region private methods
         private bool CheckOwnershipIsTrue(CommandContext ctx)
         {

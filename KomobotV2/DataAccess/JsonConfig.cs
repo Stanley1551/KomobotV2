@@ -19,6 +19,8 @@ namespace KomobotV2.DataAccess
             mandatoryVoiceChannels = string.Empty;
             crAPIKEY = string.Empty;
             crEndpoint = string.Empty;
+            footballDataEndpoint = string.Empty;
+            footballDataKey = string.Empty;
         }
         public string DiscordAPIKey { get; set; }
         public string tutorialdoc { get; set; }
@@ -29,5 +31,7 @@ namespace KomobotV2.DataAccess
         public string mandatoryVoiceChannels { get; set; }
         public string crEndpoint { get; set; }
         public string crAPIKEY { get; set; }
+        public string footballDataEndpoint { get; set; }
+        public string footballDataKey { get; set; }
     }
 }
