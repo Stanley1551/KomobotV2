@@ -15,6 +15,7 @@ using System.Net;
 using KomobotV2.APIResults;
 using Newtonsoft.Json;
 using KomobotV2.Logger;
+using KomobotV2.Enums;
 
 namespace KomobotV2
 {
@@ -433,10 +434,27 @@ namespace KomobotV2
         #endregion
 
         #region Football data commands
-        [Command("PLStanding")]
-        public async Task GetPLStanding(CommandContext ctx)
+        [Command("Standing")]
+        [Description("Foci bajnokságok jelenlegi állása.")]
+        public async Task GetPLStanding(CommandContext ctx, string league = "")
         {
-            string url = Program.config.footballDataEndpoint + "competitions/2021/standings";
+            if(league == string.Empty)
+            {
+                await ctx.RespondAsync("Paraméterként add meg a liga nevét bogárka!", false, null);
+                await ctx.RespondAsync("Elérhető bajnokságok: " + GetLeagueNames());
+                return;
+            }
+
+            if(!Enum.GetNames(typeof(FootballLeagues)).Any(x=> x.Equals(league)))
+            {
+                await ctx.RespondAsync("Ejha, a liga neve hibádzik!", false, null);
+                await ctx.RespondAsync("Elérhető bajnokságok: " + GetLeagueNames());
+                return;
+            }
+
+            var id = Enum.Parse(typeof(FootballLeagues), league);
+
+            string url = Program.config.footballDataEndpoint + "competitions/"+(int) id+"/standings";
 
             HttpWebRequest request = HttpWebRequest.CreateHttp(url);
             request.Headers.Set("X-Auth-Token", Program.config.footballDataKey);
@@ -455,7 +473,7 @@ namespace KomobotV2
                 var result = JsonConvert.DeserializeObject<FootballDataStandingsResult>(resultString);
 
                 StringBuilder builder = new StringBuilder();
-                builder.AppendLine("Premier League tabella:");
+                builder.AppendLine(id.ToString()+" tabella:");
 
                 foreach(var standing in result.standings.FirstOrDefault().table)
                 {
@@ -607,5 +625,18 @@ namespace KomobotV2
             return retVal;
         }
         #endregion
+
+        private string GetLeagueNames()
+        {
+            var retVal = string.Empty;
+
+            foreach(string name in Enum.GetNames(typeof(FootballLeagues)))
+            {
+                retVal += name + " ";
+            }
+
+            return retVal;
+        }
+
     }
 }
