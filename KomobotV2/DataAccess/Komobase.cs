@@ -29,10 +29,15 @@ namespace KomobotV2.DataAccess
             if(MissingFile)
             {
                 string sql = "create table Users (name nvarchar(25) NULL, subscribed bit NULL, CRTag nvarchar(25) NULL, PUBGID nvarchar(50) NULL, isAlive bit NULL)";
+                string sql2 = "create table AuthToken (token nvarchar(50) NULL)";
+                string sql3 = @"insert into AuthToken values(NULL)";
 
                 SQLiteCommand cmd = new SQLiteCommand(sql, DbConnection);
                 cmd.ExecuteNonQuery();
-
+                cmd.CommandText = sql2;
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = sql3;
+                cmd.ExecuteNonQuery();
             }
 
         }
@@ -67,7 +72,6 @@ namespace KomobotV2.DataAccess
                 Execute(sql);
             }
             //string membersInDb =ReadDatas("select name from users");
-            int fasz = 1;
         }
 
         public static void SubscribeUser(string userName)
@@ -125,6 +129,26 @@ namespace KomobotV2.DataAccess
             string sql = "select PUBGID from users where name = '" + username + "'";
 
             return ReadData(sql).ToString();
+        }
+
+        public static string GetAuthToken()
+        {
+            string sql = "select token from AuthToken";
+
+            var result = ReadData(sql);
+
+            if (result == null)
+            {
+                return "";
+            }
+            else return result.ToString();
+        }
+
+        public static void SetAuthToken(string token)
+        {
+            string sql = @"update AuthToken set token = '" + token+@"'";
+
+            Execute(sql);
         }
         #endregion
 

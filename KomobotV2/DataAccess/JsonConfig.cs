@@ -21,6 +21,10 @@ namespace KomobotV2.DataAccess
             crEndpoint = string.Empty;
             footballDataEndpoint = string.Empty;
             footballDataKey = string.Empty;
+            blizzardOauthAccessTokenEndpoint = string.Empty;
+            blizzardOauthCheckTokenEndpoint = string.Empty;
+            client_id = string.Empty;
+            client_secret = string.Empty;
         }
         public string DiscordAPIKey { get; set; }
         public string tutorialdoc { get; set; }
@@ -33,5 +37,9 @@ namespace KomobotV2.DataAccess
         public string crAPIKEY { get; set; }
         public string footballDataEndpoint { get; set; }
         public string footballDataKey { get; set; }
+        public string blizzardOauthAccessTokenEndpoint { get; set; }
+        public string blizzardOauthCheckTokenEndpoint { get; set; }
+        public string client_id { get; set; }
+        public string client_secret { get; set; }
     }
 }

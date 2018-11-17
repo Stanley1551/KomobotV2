@@ -16,6 +16,7 @@ using KomobotV2.APIResults;
 using Newtonsoft.Json;
 using KomobotV2.Logger;
 using KomobotV2.Enums;
+using RestSharp;
 
 namespace KomobotV2
 {
@@ -353,7 +354,7 @@ namespace KomobotV2
                 {
 
                     StartStopWatch();
-                    logger.Info(ctx.User.Username + " called " + System.Reflection.MethodBase.GetCurrentMethod().Name + ".");
+                    //logger.Info(ctx.User.Username + " called " + System.Reflection.MethodBase.GetCurrentMethod(). + ".");
                     var result = await GetCRPlayerData(ctx.User.Username, tag);
 
                     //TODO add to cache
@@ -485,7 +486,85 @@ namespace KomobotV2
         }
         #endregion
 
+        #region Blizzard commands
+        [Command("TestBlizz")]
+        public async Task GetCharInfo(CommandContext ctx, string server, string name)
+        {
+            string token = await RetrieveAuthToken();
+
+            
+
+
+        }
+        #endregion
+
         #region private methods
+        private async Task<string> RetrieveAuthToken()
+        {
+            var tokenFromDB = Komobase.GetAuthToken();
+
+            if(tokenFromDB == "")
+            {
+                string token = GetAuthTokenFromBlizzard();
+                Komobase.SetAuthToken(token);
+                return token;
+            }
+
+            await ValidateToken(tokenFromDB);
+            return tokenFromDB;
+        }
+
+        private async Task<string> ValidateToken(string token)
+        {
+            //SEHOGY SE JÓ AZ URL NEKI!!!
+            HttpWebRequest request = HttpWebRequest.CreateHttp(Program.config.blizzardOauthCheckTokenEndpoint);
+
+            request.Method = "GET";
+            request.Headers.Set(HttpRequestHeader.Authorization, "Bearer " + token);
+
+            var response = (HttpWebResponse)await request.GetResponseAsync();
+            string resultString = string.Empty;
+            if (HttpStatusCode.OK == response.StatusCode)
+            {
+                Stream stream = response.GetResponseStream();
+                StreamReader reader = new StreamReader(stream);
+
+                resultString = await reader.ReadToEndAsync();
+
+                //return JsonConvert.DeserializeObject<>(resultString);
+            }
+
+            return resultString;
+        }
+
+        private string GetAuthTokenFromBlizzard()
+        {
+            var url = Program.config.blizzardOauthAccessTokenEndpoint;
+
+            var client = new RestClient(url);
+            client.AddDefaultParameter("grant_type", "client_credentials");
+            var request = new RestRequest(Method.POST);
+            request.AddHeader("cache-control", "no-cache");
+            request.AddParameter("client_id", Program.config.client_id);
+            request.AddParameter("client_secret", Program.config.client_secret);
+
+            var respone = client.Execute(request);
+
+            return JsonConvert.DeserializeObject<BlizzardAccessTokenResponse>(respone.Content).access_token;
+        }
+
+        private string GetLeagueNames()
+        {
+            var retVal = string.Empty;
+
+            foreach (string name in Enum.GetNames(typeof(FootballLeagues)))
+            {
+                retVal += name + " ";
+            }
+
+            return retVal;
+        }
+
         private bool CheckOwnershipIsTrue(CommandContext ctx)
         {
             if (ctx != null && ctx.Member != null)
@@ -625,18 +704,6 @@ namespace KomobotV2
             return retVal;
         }
         #endregion
-
-        private string GetLeagueNames()
-        {
-            var retVal = string.Empty;
-
-            foreach(string name in Enum.GetNames(typeof(FootballLeagues)))
-            {
-                retVal += name + " ";
-            }
-
-            return retVal;
-        }
 
     }
 }
