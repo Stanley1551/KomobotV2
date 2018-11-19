@@ -216,6 +216,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="APIResults\BlizzardAccessTokenResponse.cs" />
+    <Compile Include="APIResults\BlizzardCharInfoResponse.cs" />
     <Compile Include="APIResults\FixerLatestResult.cs" />
     <Compile Include="APIResults\FootballDataStandingsResult.cs" />
     <Compile Include="APIResults\JokeResult.cs" />
@@ -227,6 +228,7 @@
     <Compile Include="DataAccess\JsonParser.cs" />
     <Compile Include="DataAccess\Komobase.cs" />
     <Compile Include="DiscordEventHandler.cs" />
+    <Compile Include="Enums\BlizzardEnums.cs" />
     <Compile Include="Enums\FootballLeagues.cs" />
     <Compile Include="Logger\KomoLogger.cs" />
     <Compile Include="Program.cs" />

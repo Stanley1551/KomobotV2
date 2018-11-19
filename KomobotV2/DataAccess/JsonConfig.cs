@@ -25,6 +25,7 @@ namespace KomobotV2.DataAccess
             blizzardOauthCheckTokenEndpoint = string.Empty;
             client_id = string.Empty;
             client_secret = string.Empty;
+            blizzardCharInfoEndpoint = string.Empty;
         }
         public string DiscordAPIKey { get; set; }
         public string tutorialdoc { get; set; }
@@ -41,5 +42,6 @@ namespace KomobotV2.DataAccess
         public string blizzardOauthCheckTokenEndpoint { get; set; }
         public string client_id { get; set; }
         public string client_secret { get; set; }
+        public string blizzardCharInfoEndpoint { get; set; }
     }
 }

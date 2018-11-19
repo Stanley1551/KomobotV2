@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using KomobotV2.Logger;
 using KomobotV2.Enums;
 using RestSharp;
+using DSharpPlus.Entities;
 
 namespace KomobotV2
 {
@@ -487,13 +488,40 @@ namespace KomobotV2
         #endregion
 
         #region Blizzard commands
-        [Command("TestBlizz")]
+        [Command("KarakterInfo")]
         public async Task GetCharInfo(CommandContext ctx, string server, string name)
         {
             string token = await RetrieveAuthToken();
 
-            
+            string url = Program.config.blizzardCharInfoEndpoint + @"/" + server + @"/" + name;
+            RestClient client = new RestClient(url);
+            client.AddDefaultParameter(new Parameter("locale", "en_US", ParameterType.QueryString));
+            client.AddDefaultParameter(new Parameter("access_token", token, ParameterType.QueryString));
 
+            var resp = client.Execute(new RestRequest());
+            if(resp.StatusCode == HttpStatusCode.OK)
+            {
+                BlizzardCharInfoResponse response = JsonConvert.DeserializeObject<BlizzardCharInfoResponse>(resp.Content);
+
+                //string info = response.name + ", level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
+                //Enum.GetName(typeof(@class), response.@class);
+                //info += "\n" + response.achievementPoints + " achievement points, " + response.totalHonorableKills + " honorable kills.";
+
+                DiscordEmbedBuilder builder = new DiscordEmbedBuilder();
+                builder.Title = response.name;
+                builder.ImageUrl = @"http://render-eu.worldofwarcraft.com/character/"+response.thumbnail;
+                builder.Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
+                Enum.GetName(typeof(@class), response.@class);
+                builder.Url = "https://worldofwarcraft.com/en-gb/character/" + server + "/" + name;
+                builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
+                builder.AddField("Achievement points:", response.achievementPoints.ToString());
+                builder.Color = DiscordColor.Aquamarine;
+                await ctx.RespondAsync(null, false, builder.Build());
+                return;
+            }
+
+            await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            
 
         }
         #endregion
@@ -503,38 +531,38 @@ namespace KomobotV2
         {
             var tokenFromDB = Komobase.GetAuthToken();
 
-            if(tokenFromDB == "")
+            if(tokenFromDB == string.Empty)
             {
                 string token = GetAuthTokenFromBlizzard();
                 Komobase.SetAuthToken(token);
                 return token;
             }
 
-            await ValidateToken(tokenFromDB);
+            if(await ValidateToken(tokenFromDB) != true)
+            {
+                string token = GetAuthTokenFromBlizzard();
+                Komobase.SetAuthToken(token);
+                return token;
+            }
+
             return tokenFromDB;
         }
 
-        private async Task<string> ValidateToken(string token)
+        private async Task<bool> ValidateToken(string token)
         {
-            //SEHOGY SE JÓ AZ URL NEKI!!!
-            HttpWebRequest request = HttpWebRequest.CreateHttp(Program.config.blizzardOauthCheckTokenEndpoint);
-
-            request.Method = "GET";
-            request.Headers.Set(HttpRequestHeader.Authorization, "Bearer " + token);
-
-            var response = (HttpWebResponse)await request.GetResponseAsync();
             string resultString = string.Empty;
-            if (HttpStatusCode.OK == response.StatusCode)
+
+            RestClient client = new RestClient(Program.config.blizzardOauthCheckTokenEndpoint);
+            RestRequest request = new RestRequest(Program.config.blizzardOauthCheckTokenEndpoint,Method.GET,DataFormat.Json);
+            //ez parameter is a faszért van elírva a dokumentációban
+            request.AddParameter("token",token);
+            var response = client.Execute(request);
+
+            if(response.StatusCode == HttpStatusCode.OK)
             {
-                Stream stream = response.GetResponseStream();
-                StreamReader reader = new StreamReader(stream);
-
-                resultString = await reader.ReadToEndAsync();
-
-                //return JsonConvert.DeserializeObject<>(resultString);
+                return true;
             }
-
-            return resultString;
+            return false;
         }
 
         private string GetAuthTokenFromBlizzard()
