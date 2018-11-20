@@ -488,8 +488,64 @@ namespace KomobotV2
         #endregion
 
         #region Blizzard commands
-        [Command("KarakterInfo")]
-        public async Task GetCharInfo(CommandContext ctx, string server, string name)
+        [Group("WoW")]
+        [Description("WoW related commands")]
+        public class BlizzardGroupedCommands
+        {
+            [Command("KarakterInfo")]
+            [Description("Standard character info.")]
+            public async Task GetCharInfo(CommandContext ctx, string server, string name)
+            {
+                var client = await ConstructBlizzardCharClient(server, name);
+
+                var resp = client.Execute(new RestRequest());
+                if (resp.StatusCode == HttpStatusCode.OK)
+                {
+                    BlizzardCharInfoResponse response = JsonConvert.DeserializeObject<BlizzardCharInfoResponse>(resp.Content);
+
+                    DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
+                    {
+                        Title = response.name,
+                        ImageUrl = @"http://render-eu.worldofwarcraft.com/character/" + response.thumbnail,
+                        Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
+                        Enum.GetName(typeof(@class), response.@class),
+                        Url = "https://worldofwarcraft.com/en-gb/character/" + server + "/" + name,
+                    };
+                    builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
+                    builder.AddField("Achievement points:", response.achievementPoints.ToString());
+                    builder.Color = DiscordColor.Aquamarine;
+
+                    await ctx.RespondAsync(null, false, builder.Build());
+                    return;
+                }
+                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            }
+
+            [Command("MennyiMount")]
+            [Description("Sum of the number of aquired mounts.")]
+            public async Task GetMounts(CommandContext ctx, string server, string name)
+            {
+                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
+
+                var response = client.Execute(new RestRequest());
+                if(response.StatusCode == HttpStatusCode.OK)
+                {
+                    BlizzardCharInfoWithMountResponse resp = JsonConvert.DeserializeObject<BlizzardCharInfoWithMountResponse>(response.Content);
+
+                    int numberOfMounts = resp.mounts.numCollected;
+
+                    await ctx.RespondAsync("Ejha! " + resp.name + " " + numberOfMounts + " mounttal rendelkezik!");
+                    return;
+                }
+                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            }
+        }
+        
+        
+        #endregion
+
+        #region private methods
+        private async static Task<RestClient> ConstructBlizzardCharClient(string server, string name, params Parameter[] parameters)
         {
             string token = await RetrieveAuthToken();
 
@@ -498,36 +554,15 @@ namespace KomobotV2
             client.AddDefaultParameter(new Parameter("locale", "en_US", ParameterType.QueryString));
             client.AddDefaultParameter(new Parameter("access_token", token, ParameterType.QueryString));
 
-            var resp = client.Execute(new RestRequest());
-            if(resp.StatusCode == HttpStatusCode.OK)
+            foreach(var parameter in parameters)
             {
-                BlizzardCharInfoResponse response = JsonConvert.DeserializeObject<BlizzardCharInfoResponse>(resp.Content);
-
-                //string info = response.name + ", level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
-                //Enum.GetName(typeof(@class), response.@class);
-                //info += "\n" + response.achievementPoints + " achievement points, " + response.totalHonorableKills + " honorable kills.";
-
-                DiscordEmbedBuilder builder = new DiscordEmbedBuilder();
-                builder.Title = response.name;
-                builder.ImageUrl = @"http://render-eu.worldofwarcraft.com/character/"+response.thumbnail;
-                builder.Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
-                Enum.GetName(typeof(@class), response.@class);
-                builder.Url = "https://worldofwarcraft.com/en-gb/character/" + server + "/" + name;
-                builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
-                builder.AddField("Achievement points:", response.achievementPoints.ToString());
-                builder.Color = DiscordColor.Aquamarine;
-                await ctx.RespondAsync(null, false, builder.Build());
-                return;
+                client.AddDefaultParameter(parameter);
             }
 
-            await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            
-
+            return client;
         }
-        #endregion
 
-        #region private methods
-        private async Task<string> RetrieveAuthToken()
+        private static async Task<string> RetrieveAuthToken()
         {
             var tokenFromDB = Komobase.GetAuthToken();
 
@@ -548,7 +583,7 @@ namespace KomobotV2
             return tokenFromDB;
         }
 
-        private async Task<bool> ValidateToken(string token)
+        private static async Task<bool> ValidateToken(string token)
         {
             string resultString = string.Empty;
 
@@ -565,7 +600,7 @@ namespace KomobotV2
             return false;
         }
 
-        private string GetAuthTokenFromBlizzard()
+        private static string GetAuthTokenFromBlizzard()
         {
             var url = Program.config.blizzardOauthAccessTokenEndpoint;
 

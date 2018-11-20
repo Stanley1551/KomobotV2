@@ -217,6 +217,7 @@
   <ItemGroup>
     <Compile Include="APIResults\BlizzardAccessTokenResponse.cs" />
     <Compile Include="APIResults\BlizzardCharInfoResponse.cs" />
+    <Compile Include="APIResults\BlizzardCharInfoWithMountResponse.cs" />
     <Compile Include="APIResults\FixerLatestResult.cs" />
     <Compile Include="APIResults\FootballDataStandingsResult.cs" />
     <Compile Include="APIResults\JokeResult.cs" />
