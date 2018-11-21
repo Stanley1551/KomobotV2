@@ -215,14 +215,15 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="APIResults\BlizzardAccessTokenResponse.cs" />
-    <Compile Include="APIResults\BlizzardCharInfoResponse.cs" />
-    <Compile Include="APIResults\BlizzardCharInfoWithMountResponse.cs" />
+    <Compile Include="APIResults\Blizzard\AccessTokenResponse.cs" />
+    <Compile Include="APIResults\Blizzard\CharInfoResponse.cs" />
+    <Compile Include="APIResults\Blizzard\CharInfoWithFeedResponse.cs" />
+    <Compile Include="APIResults\Blizzard\CharInfoWithMountResponse.cs" />
     <Compile Include="APIResults\FixerLatestResult.cs" />
     <Compile Include="APIResults\FootballDataStandingsResult.cs" />
     <Compile Include="APIResults\JokeResult.cs" />
     <Compile Include="APIResults\PUBGAPIResult.cs" />
-    <Compile Include="APIResults\RoyaleAPIResult.cs" />
+    <Compile Include="APIResults\ClashRoyale\RoyaleAPIResult.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="DataAccess\CalendarCredentials.cs" />
     <Compile Include="DataAccess\JsonConfig.cs" />

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KomobotV2.APIResults
+namespace KomobotV2.APIResults.Blizzard
 {
-    public class BlizzardAccessTokenResponse
+    public class AccessTokenResponse
     {
         public string access_token { get; set; }
         public string token_type { get; set; }

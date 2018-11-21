@@ -2,22 +2,25 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.VoiceNext;
-using DSharpPlus.CommandsNext.Attributes;
+using System.Net;
 using System.IO;
 using System.Diagnostics;
+using Newtonsoft.Json;
+using DSharpPlus.CommandsNext;
+using DSharpPlus.Entities;
+using DSharpPlus.VoiceNext;
+using DSharpPlus.CommandsNext.Attributes;
+using RestSharp;
 using Google.Apis.Calendar.v3;
-using KomobotV2.DataAccess;
 using Google.Apis.Services;
 using Google.Apis.Calendar.v3.Data;
-using System.Net;
 using KomobotV2.APIResults;
-using Newtonsoft.Json;
+using KomobotV2.APIResults.Blizzard;
+using KomobotV2.APIResults.ClashRoyale;
 using KomobotV2.Logger;
 using KomobotV2.Enums;
-using RestSharp;
-using DSharpPlus.Entities;
+using KomobotV2.DataAccess;
+
 
 namespace KomobotV2
 {
@@ -501,7 +504,7 @@ namespace KomobotV2
                 var resp = client.Execute(new RestRequest());
                 if (resp.StatusCode == HttpStatusCode.OK)
                 {
-                    BlizzardCharInfoResponse response = JsonConvert.DeserializeObject<BlizzardCharInfoResponse>(resp.Content);
+                    CharInfoResponse response = JsonConvert.DeserializeObject<CharInfoResponse>(resp.Content);
 
                     DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
                     {
@@ -510,10 +513,10 @@ namespace KomobotV2
                         Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
                         Enum.GetName(typeof(@class), response.@class),
                         Url = "https://worldofwarcraft.com/en-gb/character/" + server + "/" + name,
+                        Color = response.faction == 0 ? DiscordColor.Blue : DiscordColor.Red
                     };
                     builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
                     builder.AddField("Achievement points:", response.achievementPoints.ToString());
-                    builder.Color = DiscordColor.Aquamarine;
 
                     await ctx.RespondAsync(null, false, builder.Build());
                     return;
@@ -530,7 +533,7 @@ namespace KomobotV2
                 var response = client.Execute(new RestRequest());
                 if(response.StatusCode == HttpStatusCode.OK)
                 {
-                    BlizzardCharInfoWithMountResponse resp = JsonConvert.DeserializeObject<BlizzardCharInfoWithMountResponse>(response.Content);
+                    CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
 
                     int numberOfMounts = resp.mounts.numCollected;
 
@@ -539,12 +542,68 @@ namespace KomobotV2
                 }
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
+
+            [Command("Feed")]
+            [Description("Recent activity.")]
+            public async Task GetFeed(CommandContext ctx, string server, string name, int count = 5, string filter = "")
+            {
+                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "feed", ParameterType.QueryString));
+
+                var response = client.Execute(new RestRequest());
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    CharInfoWithFeedResponse resp = JsonConvert.DeserializeObject<CharInfoWithFeedResponse>(response.Content);
+
+                    //elvileg a most recent az első és sorban van
+                    filter = filter.ToUpper();
+                    if(filter == "BOSSKILL" || filter == "ACHIEVEMENT" || filter == "LOOT")
+                    {
+                        resp.feed = (from feeds in resp.feed
+                                    where feeds.type == filter
+                                    select feeds).ToList();
+                    }
+                    var requiredRows = resp.feed.Take(count > resp.feed.Count ? resp.feed.Count : count);
+
+                    string responseRows = string.Empty;
+
+                    foreach (Feed feed in requiredRows)
+                    {
+                        string row = ConstructFeedStringDependingOnType(feed);
+                        responseRows += row + "\n";
+                    }
+
+                    await ctx.RespondAsync(responseRows, false, null);
+                    return;
+                }
+
+                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            }
         }
-        
-        
+
+
         #endregion
 
         #region private methods
+        private static string ConstructFeedStringDependingOnType(Feed feed)
+        {
+            string retVal = string.Empty;
+            switch (feed.type)
+            {
+                case "BOSSKILL":
+                    retVal = "Legyőzte " + feed.achievement.title + "-t (" + feed.quantity + ". alkalommal)";
+                    break;
+                case "LOOT":
+                    retVal = "Lootolta a " + feed.itemId + " itemID-s itemet.";
+                    break;
+                case "ACHIEVEMENT":
+                    retVal = "Megszerezte a " + feed.achievement.title + " achit! (" + feed.achievement.points + " pont)";
+                    break;
+                
+            }
+
+            return retVal;
+        }
+
         private async static Task<RestClient> ConstructBlizzardCharClient(string server, string name, params Parameter[] parameters)
         {
             string token = await RetrieveAuthToken();
@@ -613,7 +672,7 @@ namespace KomobotV2
 
             var respone = client.Execute(request);
 
-            return JsonConvert.DeserializeObject<BlizzardAccessTokenResponse>(respone.Content).access_token;
+            return JsonConvert.DeserializeObject<AccessTokenResponse>(respone.Content).access_token;
         }
 
         private string GetLeagueNames()

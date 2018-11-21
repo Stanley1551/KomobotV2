@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KomobotV2.APIResults
+namespace KomobotV2.APIResults.Blizzard
 {
-        public class BlizzardCharInfoResponse
+        public class CharInfoResponse
         {
             public long lastModified { get; set; }
             public string name { get; set; }

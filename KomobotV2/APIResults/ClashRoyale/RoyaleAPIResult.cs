@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KomobotV2.APIResults
+namespace KomobotV2.APIResults.ClashRoyale
 {
     public class Arena
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KomobotV2.APIResults
+namespace KomobotV2.APIResults.Blizzard
 {
     public class Collected
     {
@@ -27,7 +27,7 @@ namespace KomobotV2.APIResults
         public List<Collected> collected { get; set; }
     }
 
-    public class BlizzardCharInfoWithMountResponse
+    public class CharInfoWithMountResponse
     {
         public long lastModified { get; set; }
         public string name { get; set; }
