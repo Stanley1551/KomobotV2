@@ -219,6 +219,7 @@
     <Compile Include="APIResults\Blizzard\CharInfoResponse.cs" />
     <Compile Include="APIResults\Blizzard\CharInfoWithFeedResponse.cs" />
     <Compile Include="APIResults\Blizzard\CharInfoWithMountResponse.cs" />
+    <Compile Include="APIResults\Blizzard\CharInfoWithRepu.cs" />
     <Compile Include="APIResults\FixerLatestResult.cs" />
     <Compile Include="APIResults\FootballDataStandingsResult.cs" />
     <Compile Include="APIResults\JokeResult.cs" />

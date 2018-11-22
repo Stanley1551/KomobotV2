@@ -578,6 +578,25 @@ namespace KomobotV2
 
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
+
+            [Command("Exa")]
+            [Description("Number of exalted reputations.")]
+            public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
+            {
+                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
+
+                var response = client.Execute(new RestRequest());
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
+
+                    var numberOfExas = replist.Where(x => x.standing == 7).Count();
+
+                    await ctx.RespondAsync(name + " karakteren jelenleg " + numberOfExas + " exalted repu van!");
+                    return;
+                }
+                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            }
         }
 
 
