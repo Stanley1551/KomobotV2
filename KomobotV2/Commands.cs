@@ -501,7 +501,7 @@ namespace KomobotV2
             {
                 var client = await ConstructBlizzardCharClient(server, name);
 
-                var resp = client.Execute(new RestRequest());
+                var resp = await client.ExecuteTaskAsync(new RestRequest());
                 if (resp.StatusCode == HttpStatusCode.OK)
                 {
                     CharInfoResponse response = JsonConvert.DeserializeObject<CharInfoResponse>(resp.Content);
@@ -530,7 +530,7 @@ namespace KomobotV2
             {
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
 
-                var response = client.Execute(new RestRequest());
+                var response = await client.ExecuteTaskAsync(new RestRequest());
                 if(response.StatusCode == HttpStatusCode.OK)
                 {
                     CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
@@ -549,7 +549,7 @@ namespace KomobotV2
             {
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "feed", ParameterType.QueryString));
 
-                var response = client.Execute(new RestRequest());
+                var response = await client.ExecuteTaskAsync(new RestRequest());
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     CharInfoWithFeedResponse resp = JsonConvert.DeserializeObject<CharInfoWithFeedResponse>(response.Content);
@@ -585,7 +585,7 @@ namespace KomobotV2
             {
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
 
-                var response = client.Execute(new RestRequest());
+                var response = await client.ExecuteTaskAsync(new RestRequest());
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
@@ -605,17 +605,17 @@ namespace KomobotV2
         #region private methods
         private static string ConstructFeedStringDependingOnType(Feed feed)
         {
-            string retVal = string.Empty;
+            string retVal = GetDateTimeFromTimeStamp(long.Parse(feed.timestamp.ToString())).ToString()+" ";
             switch (feed.type)
             {
                 case "BOSSKILL":
-                    retVal = "Legyőzte " + feed.achievement.title + "-t (" + feed.quantity + ". alkalommal)";
+                    retVal += "Legyőzte " + feed.achievement.title + "-t (" + feed.quantity + ". alkalommal)";
                     break;
                 case "LOOT":
-                    retVal = "Lootolta a " + feed.itemId + " itemID-s itemet.";
+                    retVal += "Lootolta a " + feed.itemId + " itemID-s itemet.";
                     break;
                 case "ACHIEVEMENT":
-                    retVal = "Megszerezte a " + feed.achievement.title + " achit! (" + feed.achievement.points + " pont)";
+                    retVal += "Megszerezte a " + feed.achievement.title + " achit! (" + feed.achievement.points + " pont)";
                     break;
                 
             }
@@ -646,14 +646,14 @@ namespace KomobotV2
 
             if(tokenFromDB == string.Empty)
             {
-                string token = GetAuthTokenFromBlizzard();
+                string token = await GetAuthTokenFromBlizzard();
                 Komobase.SetAuthToken(token);
                 return token;
             }
 
             if(await ValidateToken(tokenFromDB) != true)
             {
-                string token = GetAuthTokenFromBlizzard();
+                string token = await GetAuthTokenFromBlizzard();
                 Komobase.SetAuthToken(token);
                 return token;
             }
@@ -669,7 +669,7 @@ namespace KomobotV2
             RestRequest request = new RestRequest(Program.config.blizzardOauthCheckTokenEndpoint,Method.GET,DataFormat.Json);
             //ez parameter is a faszért van elírva a dokumentációban
             request.AddParameter("token",token);
-            var response = client.Execute(request);
+            var response = await client.ExecuteTaskAsync(request);
 
             if(response.StatusCode == HttpStatusCode.OK)
             {
@@ -678,7 +678,7 @@ namespace KomobotV2
             return false;
         }
 
-        private static string GetAuthTokenFromBlizzard()
+        private static async Task<string> GetAuthTokenFromBlizzard()
         {
             var url = Program.config.blizzardOauthAccessTokenEndpoint;
 
@@ -689,7 +689,7 @@ namespace KomobotV2
             request.AddParameter("client_id", Program.config.client_id);
             request.AddParameter("client_secret", Program.config.client_secret);
 
-            var respone = client.Execute(request);
+            var respone = await client.ExecuteTaskAsync(request);
 
             return JsonConvert.DeserializeObject<AccessTokenResponse>(respone.Content).access_token;
         }
@@ -843,6 +843,12 @@ namespace KomobotV2
             stopwatch.Reset();
 
             return retVal;
+        }
+
+        private static DateTime GetDateTimeFromTimeStamp(long timestamp)
+        {
+            var epoch = new DateTime(1970, 1, 1, 1, 0, 0, DateTimeKind.Utc);
+            return epoch.AddMilliseconds(timestamp);
         }
         #endregion
 
