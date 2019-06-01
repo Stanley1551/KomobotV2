@@ -32,12 +32,20 @@ namespace KomobotV2.DataAccess
                 string sql2 = "create table AuthToken (token nvarchar(50) NULL)";
                 string sql3 = @"insert into AuthToken values(NULL)";
 
-                SQLiteCommand cmd = new SQLiteCommand(sql, DbConnection);
-                cmd.ExecuteNonQuery();
-                cmd.CommandText = sql2;
-                cmd.ExecuteNonQuery();
-                cmd.CommandText = sql3;
-                cmd.ExecuteNonQuery();
+                List<string> sqlCommandList = new List<string>() { sql, sql2, sql3 };
+                SQLiteCommand cmd = new SQLiteCommand(DbConnection);
+                foreach (string sqlCommand in sqlCommandList)
+                {
+                    cmd.CommandText = sqlCommand;
+                    cmd.ExecuteNonQuery();
+                }
+
+                //SQLiteCommand cmd = new SQLiteCommand(sql, DbConnection);
+                //cmd.ExecuteNonQuery();
+                //cmd.CommandText = sql2;
+                //cmd.ExecuteNonQuery();
+                //cmd.CommandText = sql3;
+                //cmd.ExecuteNonQuery();
             }
 
         }

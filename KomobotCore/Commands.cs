@@ -8,18 +8,20 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
-using DSharpPlus.VoiceNext;
 using DSharpPlus.CommandsNext.Attributes;
 using RestSharp;
-using Google.Apis.Calendar.v3;
-using Google.Apis.Services;
-using Google.Apis.Calendar.v3.Data;
 using KomobotV2.APIResults;
 using KomobotV2.APIResults.Blizzard;
 using KomobotV2.APIResults.ClashRoyale;
 using KomobotV2.Logger;
 using KomobotV2.Enums;
 using KomobotV2.DataAccess;
+using KomobotCore;
+using KomobotCore.APIResults.Twitch;
+using KomobotCore.Exceptions;
+using System.Collections.Generic;
+using Models = TwitchLib.Api.Helix.Models;
+using TwitchLib.Api.V5;
 
 
 namespace KomobotV2
@@ -33,6 +35,7 @@ namespace KomobotV2
         [Command("doksi")]
         public async Task Doksi(CommandContext ctx)
         {
+            logger.Debug(ctx.User.Username + "called Doksi!");
             await ctx.RespondAsync("Nézd át a doksit: " + Program.config.tutorialdoc);
         }
 
@@ -40,6 +43,7 @@ namespace KomobotV2
         [Description("Random számokkal való játszadozás.")]
         public async Task Random(CommandContext ctx, int a, int b)
         {
+            logger.Debug(ctx.User.Username + "called random!");
             Random random = new System.Random();
 
             if (!(a < b))
@@ -65,13 +69,19 @@ namespace KomobotV2
         [Command("hanyas")]
         public async Task Hanyas(CommandContext ctx)
         {
-            await ctx.RespondAsync("Egyes.");
+            try
+            {
+                logger.Debug(ctx.User.Username + "called hanyas!");
+                await ctx.RespondAsync("Egyes.");
+            }
+            catch (Exception e) { Console.WriteLine(e.Message); }
         }
 
         [Command("sessionInfoSub")]
         [Description("Feliratkozás értesitésre, hogy mennyit függtél.")]
         public async Task SessionInfoSub(CommandContext ctx)
         {
+            logger.Debug(ctx.User.Username + "called sessionInfoSub!");
             Komobase.SubscribeUser(ctx.User.Username);
 
             await ctx.RespondAsync("Mostantól küldeni fogom mennyit függtél kedves " + ctx.User.Username + ".");
@@ -81,9 +91,8 @@ namespace KomobotV2
         [Description("Leiratkozás a privát értesitésekről.")]
         public async Task SessionInfoUnsub(CommandContext ctx)
         {
+            logger.Debug(ctx.User.Username + "called sessionInfoUnsub!");
             Komobase.UnsubscribeUser(ctx.User.Username);
-
-            Program.gameStartedDictionary.Remove(ctx.Member);
 
             await ctx.RespondAsync("Nem kapsz több infót a játékmenetedről " + ctx.User.Username + ".");
         }
@@ -93,166 +102,166 @@ namespace KomobotV2
 
         #endregion
 
-        #region voice commands
-        [Command("join")]
-        [RequireOwner]
-        public async Task Join(CommandContext ctx)
-        {
-            var vnext = ctx.Client.GetVoiceNextClient();
-
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc != null)
-                throw new InvalidOperationException("Already connected in this guild.");
-
-            var chn = ctx.Member?.VoiceState?.Channel;
-            if (chn == null)
-                throw new InvalidOperationException("You need to be in a voice channel.");
-
-            vnc = await vnext.ConnectAsync(chn);
-            await ctx.RespondAsync("👌");
-        }
-
-        [Command("leave")]
-        [RequireOwner]
-        public async Task Leave(CommandContext ctx)
-        {
-            var vnext = ctx.Client.GetVoiceNextClient();
-
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-                throw new InvalidOperationException("Not connected in this guild.");
-
-            vnc.Disconnect();
-            await ctx.RespondAsync("👌");
-        }
-
-        [Command("play")]
-        [RequireOwner]
-        public async Task Play(CommandContext ctx, [RemainingText] string file)
-        {
-            //if(!CheckOwnershipIsTrue(ctx))
-            //{
-            //    await ctx.RespondAsync("Ehhez nincs jogosultságod bogárka.");
-            //    return;
-            //}
-            file = "komobot_voicelines/" + file + ".mp3";
-            var vnext = ctx.Client.GetVoiceNextClient();
-
-            var vnc = vnext.GetConnection(ctx.Guild);
-            if (vnc == null)
-                throw new InvalidOperationException("Not connected in this guild.");
-
-            if (!File.Exists(file))
-                throw new FileNotFoundException("File was not found.");
-
-            await ctx.RespondAsync("👌");
-            await vnc.SendSpeakingAsync(true); // send a speaking indicator
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = "ffmpeg",
-                Arguments = $@"-i ""{file}"" -ac 2 -f s16le -ar 48000 pipe:1",
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-            var ffmpeg = Process.Start(psi);
-            var ffout = ffmpeg.StandardOutput.BaseStream;
-
-            var buff = new byte[3840];
-            var br = 0;
-            while ((br = ffout.Read(buff, 0, buff.Length)) > 0)
-            {
-                if (br < buff.Length) // not a full sample, mute the rest
-                    for (var i = br; i < buff.Length; i++)
-                        buff[i] = 0;
-
-                await vnc.SendAsync(buff, 20);
-            }
-
-            await vnc.SendSpeakingAsync(false); // we're not speaking anymore
-        }
-
-        #endregion
-
-        #region calendar commands
-        [Command("addevent")]
-        [Description("Esemény hozzáadása.")]
-        public async Task AddEvent(CommandContext ctx, string date, params string[] name)
-        {
-            CalendarCredentials CalCred = new CalendarCredentials();
-
-            var service = new CalendarService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = CalCred.credential,
-                ApplicationName = CalendarCredentials.ApplicationName,
-            });
-
-            Event newEvent = new Event()
-            {
-                Summary = GetNameFromArray(name),
-                Start = new EventDateTime()
-                {
-                    Date = date
-                },
-                End = new EventDateTime()
-                {
-                    Date = date
-                },
-            };
-
-            EventsResource.InsertRequest request = service.Events.Insert(newEvent, "primary");
-            Event createdEvent = request.Execute();
-            await ctx.RespondAsync("Az esemény el lett tárolva.");
-        }
-
-        //[Command("removeevent")]
-        //public async Task RemoveEvent(CommandContext ctx, int id)
+        //#region voice commands
+        //[Command("join")]
+        //[RequireOwner]
+        //public async Task Join(CommandContext ctx)
         //{
+        //    var vnext = ctx.Client.GetVoiceNextClient();
 
+        //    var vnc = vnext.GetConnection(ctx.Guild);
+        //    if (vnc != null)
+        //        throw new InvalidOperationException("Already connected in this guild.");
+
+        //    var chn = ctx.Member?.VoiceState?.Channel;
+        //    if (chn == null)
+        //        throw new InvalidOperationException("You need to be in a voice channel.");
+
+        //    vnc = await vnext.ConnectAsync(chn);
+        //    await ctx.RespondAsync("👌");
         //}
 
-        [Command("upcoming")]
-        [Description("Események listázása.")]
-        public async Task Upcoming(CommandContext ctx, int maxRes = 5)
-        {
-            CalendarCredentials CalCred = new CalendarCredentials();
+        //[Command("leave")]
+        //[RequireOwner]
+        //public async Task Leave(CommandContext ctx)
+        //{
+        //    var vnext = ctx.Client.GetVoiceNextClient();
 
-            var service = new CalendarService(new BaseClientService.Initializer()
-            {
-                HttpClientInitializer = CalCred.credential,
-                ApplicationName = CalendarCredentials.ApplicationName,
-            });
+        //    var vnc = vnext.GetConnection(ctx.Guild);
+        //    if (vnc == null)
+        //        throw new InvalidOperationException("Not connected in this guild.");
 
-            // Define parameters of request.
-            EventsResource.ListRequest request = service.Events.List("primary");
-            request.TimeMin = DateTime.Now;
-            request.ShowDeleted = false;
-            request.SingleEvents = true;
-            request.MaxResults = maxRes;
-            request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+        //    vnc.Disconnect();
+        //    await ctx.RespondAsync("👌");
+        //}
 
-            // List events.
-            Events events = request.Execute();
-            await ctx.RespondAsync("Események a közeljövőben:");
-            if (events.Items != null && events.Items.Count > 0)
-            {
-                foreach (var eventItem in events.Items)
-                {
-                    string when = eventItem.Start.DateTime.ToString();
-                    if (String.IsNullOrEmpty(when))
-                    {
-                        when = eventItem.Start.Date;
-                    }
-                    await ctx.RespondAsync(string.Format("{0} ({1})", eventItem.Summary, when));
-                }
-            }
-            else
-            {
-                await ctx.RespondAsync("Nem találtam jövőbeni eseményt.");
-            }
-        }
+        //[Command("play")]
+        //[RequireOwner]
+        //public async Task Play(CommandContext ctx, [RemainingText] string file)
+        //{
+        //    //if(!CheckOwnershipIsTrue(ctx))
+        //    //{
+        //    //    await ctx.RespondAsync("Ehhez nincs jogosultságod bogárka.");
+        //    //    return;
+        //    //}
+        //    file = "komobot_voicelines/" + file + ".mp3";
+        //    var vnext = ctx.Client.GetVoiceNextClient();
 
-        #endregion
+        //    var vnc = vnext.GetConnection(ctx.Guild);
+        //    if (vnc == null)
+        //        throw new InvalidOperationException("Not connected in this guild.");
+
+        //    if (!File.Exists(file))
+        //        throw new FileNotFoundException("File was not found.");
+
+        //    await ctx.RespondAsync("👌");
+        //    await vnc.SendSpeakingAsync(true); // send a speaking indicator
+
+        //    var psi = new ProcessStartInfo
+        //    {
+        //        FileName = "ffmpeg",
+        //        Arguments = $@"-i ""{file}"" -ac 2 -f s16le -ar 48000 pipe:1",
+        //        RedirectStandardOutput = true,
+        //        UseShellExecute = false
+        //    };
+        //    var ffmpeg = Process.Start(psi);
+        //    var ffout = ffmpeg.StandardOutput.BaseStream;
+
+        //    var buff = new byte[3840];
+        //    var br = 0;
+        //    while ((br = ffout.Read(buff, 0, buff.Length)) > 0)
+        //    {
+        //        if (br < buff.Length) // not a full sample, mute the rest
+        //            for (var i = br; i < buff.Length; i++)
+        //                buff[i] = 0;
+
+        //        await vnc.SendAsync(buff, 20);
+        //    }
+
+        //    await vnc.SendSpeakingAsync(false); // we're not speaking anymore
+        //}
+
+        //#endregion
+
+        //#region calendar commands
+        //[Command("addevent")]
+        //[Description("Esemény hozzáadása.")]
+        //public async Task AddEvent(CommandContext ctx, string date, params string[] name)
+        //{
+        //    CalendarCredentials CalCred = new CalendarCredentials();
+
+        //    var service = new CalendarService(new BaseClientService.Initializer()
+        //    {
+        //        HttpClientInitializer = CalCred.credential,
+        //        ApplicationName = CalendarCredentials.ApplicationName,
+        //    });
+
+        //    Event newEvent = new Event()
+        //    {
+        //        Summary = GetNameFromArray(name),
+        //        Start = new EventDateTime()
+        //        {
+        //            Date = date
+        //        },
+        //        End = new EventDateTime()
+        //        {
+        //            Date = date
+        //        },
+        //    };
+
+        //    EventsResource.InsertRequest request = service.Events.Insert(newEvent, "primary");
+        //    Event createdEvent = request.Execute();
+        //    await ctx.RespondAsync("Az esemény el lett tárolva.");
+        //}
+
+        ////[Command("removeevent")]
+        ////public async Task RemoveEvent(CommandContext ctx, int id)
+        ////{
+
+        ////}
+
+        //[Command("upcoming")]
+        //[Description("Események listázása.")]
+        //public async Task Upcoming(CommandContext ctx, int maxRes = 5)
+        //{
+        //    CalendarCredentials CalCred = new CalendarCredentials();
+
+        //    var service = new CalendarService(new BaseClientService.Initializer()
+        //    {
+        //        HttpClientInitializer = CalCred.credential,
+        //        ApplicationName = CalendarCredentials.ApplicationName,
+        //    });
+
+        //    // Define parameters of request.
+        //    EventsResource.ListRequest request = service.Events.List("primary");
+        //    request.TimeMin = DateTime.Now;
+        //    request.ShowDeleted = false;
+        //    request.SingleEvents = true;
+        //    request.MaxResults = maxRes;
+        //    request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+
+        //    // List events.
+        //    Events events = request.Execute();
+        //    await ctx.RespondAsync("Események a közeljövőben:");
+        //    if (events.Items != null && events.Items.Count > 0)
+        //    {
+        //        foreach (var eventItem in events.Items)
+        //        {
+        //            string when = eventItem.Start.DateTime.ToString();
+        //            if (String.IsNullOrEmpty(when))
+        //            {
+        //                when = eventItem.Start.Date;
+        //            }
+        //            await ctx.RespondAsync(string.Format("{0} ({1})", eventItem.Summary, when));
+        //        }
+        //    }
+        //    else
+        //    {
+        //        await ctx.RespondAsync("Nem találtam jövőbeni eseményt.");
+        //    }
+        //}
+
+        //#endregion
 
         #region currency commands
 
@@ -260,6 +269,7 @@ namespace KomobotV2
         [Description("Árfolyam-infók.")]
         public async Task Latest(CommandContext ctx, string curr = "EUR")
         {
+            logger.Debug(ctx.User.Username + "called latest!");
             FixerLatestResult result;
 
             if (!ValidateCurrency(curr))
@@ -291,6 +301,7 @@ namespace KomobotV2
             [Description("Visszaadja a Clash Royale Tag-edet.")]
             public async Task GetCRName(CommandContext ctx)
             {
+                logger.Debug(ctx.User.Username + "called CR getTag!");
                 var retVal = Komobase.GetCRTag(ctx.User.Username);
 
                 if (string.IsNullOrEmpty(retVal))
@@ -308,6 +319,7 @@ namespace KomobotV2
             [Description("Beállitom a Clash Royale tag-edet.")]
             public async Task SetCRTag(CommandContext ctx, string tag = null)
             {
+                logger.Debug(ctx.User.Username + "called CR setTag!");
                 if (ValidateID(tag))
                 {
                     Komobase.SetCRTag(ctx.User.Username, tag.ToUpper());
@@ -320,6 +332,7 @@ namespace KomobotV2
             [Description("Az eddigi Clash Royale win-ed száma.")]
             public async Task GetCRWins(CommandContext ctx, string tag = null)
             {
+                logger.Debug(ctx.User.Username + "called CR Wins!");
                 var result = await GetCRPlayerData(ctx.User.Username, tag);
 
                 //TODO add to cache
@@ -337,6 +350,7 @@ namespace KomobotV2
             [Description("Jelenlegi trófeáid.")]
             public async Task GetCRTrophies(CommandContext ctx, string tag = null)
             {
+                logger.Debug(ctx.User.Username + "called CR Trophy!");
                 var result = await GetCRPlayerData(ctx.User.Username, tag);
 
                 //TODO add to cache
@@ -354,6 +368,7 @@ namespace KomobotV2
             [Description("Általános Clash Royale információk.")]
             public async Task GetCRInfo(CommandContext ctx, string tag = null)
             {
+                logger.Debug(ctx.User.Username + "called CR Info!");
                 try
                 {
 
@@ -443,7 +458,8 @@ namespace KomobotV2
         [Description("Foci bajnokságok jelenlegi állása.")]
         public async Task GetPLStanding(CommandContext ctx, string league = "")
         {
-            if(league == string.Empty)
+            logger.Debug(ctx.User.Username + "called Standing!");
+            if (league == string.Empty)
             {
                 await ctx.RespondAsync("Paraméterként add meg a liga nevét bogárka!", false, null);
                 await ctx.RespondAsync("Elérhető bajnokságok: " + GetLeagueNames());
@@ -470,7 +486,7 @@ namespace KomobotV2
 
             if (HttpStatusCode.OK == code)
             {
-                Stream stream = response.GetResponseStream();
+                System.IO.Stream stream = response.GetResponseStream();
                 StreamReader reader = new StreamReader(stream);
 
                 string resultString = await reader.ReadToEndAsync();
@@ -498,6 +514,7 @@ namespace KomobotV2
             [Command("setName")]
             public async Task SetWowRealmAndName(CommandContext ctx, string realm, string name)
             {
+                logger.Debug(ctx.User.Username + "called wow setName!");
                 Komobase.SetWowRealmAndName(ctx.User.Username, realm, name);
 
                 await ctx.RespondAsync("Beirtam a naplóba a realmodat és a karaktered nevét!");
@@ -507,6 +524,7 @@ namespace KomobotV2
             [Description("Standard character info.")]
             public async Task GetCharInfo(CommandContext ctx, string server, string name)
             {
+                logger.Debug(ctx.User.Username + "called WoW KarakterInfo!");
                 var client = await ConstructBlizzardCharClient(server, name);
 
                 var resp = await client.ExecuteTaskAsync(new RestRequest());
@@ -532,17 +550,18 @@ namespace KomobotV2
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
 
-            [Command("KarakterInfo")]
-            [Description("Standard character info.")]
-            public async Task GetCharInfo(CommandContext ctx)
-            {
-                Komobase.GetWowRealmAndName(ctx.User.Username);
-            }
+            //[Command("KarakterInfo")]
+            //[Description("Standard character info.")]
+            //public async Task GetCharInfo(CommandContext ctx)
+            //{
+            //    Komobase.GetWowRealmAndName(ctx.User.Username);
+            //}
 
             [Command("MennyiMount")]
             [Description("Sum of the number of aquired mounts.")]
             public async Task GetMounts(CommandContext ctx, string server, string name)
             {
+                logger.Debug(ctx.User.Username + "called wow mennyimount!");
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
 
                 var response = await client.ExecuteTaskAsync(new RestRequest());
@@ -562,6 +581,7 @@ namespace KomobotV2
             [Description("Recent activity.")]
             public async Task GetFeed(CommandContext ctx, string server, string name, int count = 5, string filter = "")
             {
+                logger.Debug(ctx.User.Username + "called "+ ctx.Command.Name);
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "feed", ParameterType.QueryString));
 
                 var response = await client.ExecuteTaskAsync(new RestRequest());
@@ -598,6 +618,7 @@ namespace KomobotV2
             [Description("Number of exalted reputations.")]
             public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
             {
+                logger.Debug(ctx.User.Username + "called " + ctx.Command.Name);
                 var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
 
                 var response = await client.ExecuteTaskAsync(new RestRequest());
@@ -613,11 +634,48 @@ namespace KomobotV2
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
         }
+        #endregion
 
+        #region Twitch commands
+        [Group("Twitch")]
+        [Description("Twitch related commands")]
+        public class TwitchGroupedCommands
+        {
+            [Command("online")]
+            [Description("Megnézzük, online-e a stream.")]
+            public async Task GetStreamOnline(CommandContext ctx, string channel)
+            {
+                try
+                {
+                    var response = await RetrieveTwitchChannelInfo(channel);
 
+                    //elvégre csak 1et kérünk vissza...
+                    var stream = response.Streams.FirstOrDefault();
+
+                    if(stream is null)
+                    {
+                        await ctx.RespondAsync(channel + " jelenleg nem streamel!");
+                    }
+                    else
+                    {
+                        await ctx.RespondAsync(channel + " most online!" + GetTimeLapsedFormattedString(stream.StartedAt) + " streamel. " +
+                        "Streamjét jelenleg " + stream.ViewerCount + " ember nézi.");
+                    }
+                    
+                }
+                catch(TwitchStreamNotFoundException) { await ctx.RespondAsync("Nem találni ilyen streamet!"); }
+                catch(Exception e) { await ctx.RespondAsync("Valami hiba történt!"); logger.Error("GetStreamOnline", e); }
+            }
+        }
         #endregion
 
         #region private methods
+        private static string GetTimeLapsedFormattedString(DateTime startedAt)
+        {
+            var timeLapsed = DateTime.UtcNow - startedAt.ToUniversalTime();
+            return timeLapsed.Hours + " órája, " + timeLapsed.Minutes + " perce";
+        }
+
         private static string ConstructFeedStringDependingOnType(Feed feed)
         {
             string retVal = GetDateTimeFromTimeStamp(long.Parse(feed.timestamp.ToString())).ToString()+" ";
@@ -636,6 +694,20 @@ namespace KomobotV2
             }
 
             return retVal;
+        }
+
+        private async static Task<Models.Streams.GetStreamsResponse> RetrieveTwitchChannelInfo(string channel)
+        {
+            //Előbb kell ID, mert csak azzal megy a hivás...
+            var response = await Program.API.V5.Users.GetUserByNameAsync(channel);
+            if(response.Total == 0)
+            {
+                throw new TwitchStreamNotFoundException("The GetUserByNameAsync returned with no data.");
+            }
+
+            var userid = response.Matches[0].Id;
+
+            return await Program.API.Helix.Streams.GetStreamsAsync(null,null,1,null,null,"all",new List<string>() { userid },null);
         }
 
         private async static Task<RestClient> ConstructBlizzardCharClient(string server, string name, params Parameter[] parameters)
@@ -701,6 +773,7 @@ namespace KomobotV2
             client.AddDefaultParameter("grant_type", "client_credentials");
             var request = new RestRequest(Method.POST);
             request.AddHeader("cache-control", "no-cache");
+            request.AddParameter("grant_type", "client_credentials");
             request.AddParameter("client_id", Program.config.client_id);
             request.AddParameter("client_secret", Program.config.client_secret);
 
@@ -821,7 +894,7 @@ namespace KomobotV2
 
                 if (HttpStatusCode.OK == code)
                 {
-                    Stream stream = response.GetResponseStream();
+                    System.IO.Stream stream = response.GetResponseStream();
                     StreamReader reader = new StreamReader(stream);
 
                     string resultString = await reader.ReadToEndAsync();
