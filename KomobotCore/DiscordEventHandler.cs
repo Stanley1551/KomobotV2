@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Entities;
 using DSharpPlus;
-using KomobotV2.DataAccess;
 using TwitchLib;
 using TwitchLib.Api;
 using TwitchLib.Api.Services.Events.LiveStreamMonitor;
 using KomobotCore;
 using KomobotV2.Logger;
 using TwitchLib.Api.Services.Events;
+using KomoBase;
+using KomobotCore.DataAccess;
 
 namespace KomobotV2
 {
@@ -42,54 +43,65 @@ namespace KomobotV2
         {
             try
             {
-                if (Komobase.IsSubscribed(e.Member.Username))
+                using (KomoBaseAccess kba = new KomoBaseAccess())
                 {
-                    //if just started playing
-                    if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
+                    bool subStatus = kba.SubStatus(e.Member.Username);
+
+                    if (subStatus == true)
                     {
-                        gameStartedDictionary.Add(e.Member, DateTime.Now);
-                    }
-                    //if ended 
-                    else if (e.Game == null || e.Game.Name == null || e.Game.Name == string.Empty)
-                    {
-                        if (gameStartedDictionary.ContainsKey(e.Member))
+                        //if just started playing
+                        if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
                         {
-                            DiscordDmChannel dm = await client.CreateDmAsync(e.Member);
+                            gameStartedDictionary.Add(e.Member, DateTime.Now);
+                        }
+                        //if ended 
+                        else if (e.Game == null || e.Game.Name == null || e.Game.Name == string.Empty)
+                        {
+                            if (gameStartedDictionary.ContainsKey(e.Member))
+                            {
+                                DiscordDmChannel dm = await client.CreateDmAsync(e.Member);
 
-                            await client.SendMessageAsync(dm, "No! Ennyit függtél most: " +
-                                GetTimeLapsedString(DateTime.Now, gameStartedDictionary[e.Member]),
-                                false, null);
+                                await client.SendMessageAsync(dm, "No! Ennyit függtél most: " +
+                                    GetTimeLapsedString(DateTime.Now, gameStartedDictionary[e.Member]),
+                                    false, null);
 
-                            gameStartedDictionary.Remove(e.Member);
+                                gameStartedDictionary.Remove(e.Member);
+                            }
                         }
                     }
                 }
-            }catch(Exception ex) { logger.Error(DateTime.UtcNow.ToString() + ": " + ex.Message); }
+            }
+            catch (Exception ex) { logger.Error(DateTime.UtcNow.ToString() + ": " + ex.Message); }
         }
 
         public static async Task GuildMemberRemoved(GuildMemberRemoveEventArgs e, DiscordClient client)
         {
             var log = await client.Guilds.FirstOrDefault().Value.GetAuditLogsAsync(1, null);
-            AuditLogActionType actionType = log.FirstOrDefault().ActionType;
 
-            switch (actionType)
+            //Only bcoz of the kick command
+            if(!log.FirstOrDefault().UserResponsible.IsBot)
             {
-                case AuditLogActionType.Ban:
-                    {
-                        await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
-                        e.Member.Username + " kapott egy banhammert!", false);
-                        break;
-                    }
-                case AuditLogActionType.Kick:
-                    {
-                        await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
-                        e.Member.Username + " ki lett rúgva innen!", false);
-                        break;
-                    }
-            }
+                AuditLogActionType actionType = log.FirstOrDefault().ActionType;
 
-            DiscordMessage msg = await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
-                e.Member.Username + ", bukás!", false);
+                switch (actionType)
+                {
+                    case AuditLogActionType.Ban:
+                        {
+                            await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
+                            e.Member.Username + " kapott egy banhammert!", false);
+                            break;
+                        }
+                    case AuditLogActionType.Kick:
+                        {
+                            await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
+                            e.Member.Username + " ki lett rúgva innen!", false);
+                            break;
+                        }
+                }
+
+                DiscordMessage msg = await client.SendMessageAsync(e.Guild.Channels.Where(x => x.Name == "general").FirstOrDefault(),
+                    e.Member.Username + ", bukás!", false);
+            }
         }
 
         public static async Task EmojiUpdated(GuildEmojisUpdateEventArgs e, DiscordClient client)
@@ -100,14 +112,7 @@ namespace KomobotV2
                 "-kor " + added.Name + " néven!");
         }
 
-        internal static void Monitor_OnChannelsSet(object sender, OnChannelsSetArgs e)
-        {
-            foreach(string channel in e.Channels)
-            {
-                string msg = "Twitch monitor set to channel: " + channel;
-                logger.Debug(msg);
-            }
-        }
+        
 
         public static async Task ChannelDeleted(ChannelDeleteEventArgs e, DiscordClient client, JsonConfig config)
         {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KomobotV2.DataAccess
+namespace KomobotCore.DataAccess
 {
     public class JsonConfig
     {
@@ -29,6 +29,9 @@ namespace KomobotV2.DataAccess
             twitchClientID = string.Empty;
             twitchAccessToken = string.Empty;
             twitchChannelsToMonitor = string.Empty;
+            stravaSecret = string.Empty;
+            stravaRefreshToken = string.Empty;
+            stravaClientID = string.Empty;
         }
         public string DiscordAPIKey { get; set; }
         public string tutorialdoc { get; set; }
@@ -49,5 +52,8 @@ namespace KomobotV2.DataAccess
         public string twitchClientID { get; set; }
         public string twitchAccessToken { get; set; }
         public string twitchChannelsToMonitor { get; set; }
+        public string stravaSecret { get; set; }
+        public string stravaRefreshToken { get; set; }
+        public string stravaClientID { get; set; }
     }
 }

@@ -10,19 +10,17 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.CommandsNext.Attributes;
 using RestSharp;
-using KomobotV2.APIResults;
-using KomobotV2.APIResults.Blizzard;
-using KomobotV2.APIResults.ClashRoyale;
 using KomobotV2.Logger;
-using KomobotV2.Enums;
-using KomobotV2.DataAccess;
 using KomobotCore;
-using KomobotCore.APIResults.Twitch;
-using KomobotCore.Exceptions;
-using System.Collections.Generic;
-using Models = TwitchLib.Api.Helix.Models;
-using TwitchLib.Api.V5;
-
+using Currency;
+using Unity;
+using QrCodeCreation;
+using Football;
+using Strava;
+using KomoBase;
+using Wow;
+using Twitch;
+using Wow.Enums;
 
 namespace KomobotV2
 {
@@ -81,8 +79,11 @@ namespace KomobotV2
         [Description("Feliratkozás értesitésre, hogy mennyit függtél.")]
         public async Task SessionInfoSub(CommandContext ctx)
         {
-            logger.Debug(ctx.User.Username + "called sessionInfoSub!");
-            Komobase.SubscribeUser(ctx.User.Username);
+            logger.Debug(ctx.User.Username + " called sessionInfoSub!");
+            using (KomoBaseAccess kba = new KomoBaseAccess())
+            {
+                kba.UpdateSubscription(ctx.User.Username, true);
+            }
 
             await ctx.RespondAsync("Mostantól küldeni fogom mennyit függtél kedves " + ctx.User.Username + ".");
         }
@@ -91,8 +92,11 @@ namespace KomobotV2
         [Description("Leiratkozás a privát értesitésekről.")]
         public async Task SessionInfoUnsub(CommandContext ctx)
         {
-            logger.Debug(ctx.User.Username + "called sessionInfoUnsub!");
-            Komobase.UnsubscribeUser(ctx.User.Username);
+            logger.Debug(ctx.User.Username + " called sessionInfoUnsub!");
+            using (KomoBaseAccess kba = new KomoBaseAccess())
+            {
+                kba.UpdateSubscription(ctx.User.Username, false);
+            }
 
             await ctx.RespondAsync("Nem kapsz több infót a játékmenetedről " + ctx.User.Username + ".");
         }
@@ -183,85 +187,7 @@ namespace KomobotV2
 
         //#endregion
 
-        //#region calendar commands
-        //[Command("addevent")]
-        //[Description("Esemény hozzáadása.")]
-        //public async Task AddEvent(CommandContext ctx, string date, params string[] name)
-        //{
-        //    CalendarCredentials CalCred = new CalendarCredentials();
 
-        //    var service = new CalendarService(new BaseClientService.Initializer()
-        //    {
-        //        HttpClientInitializer = CalCred.credential,
-        //        ApplicationName = CalendarCredentials.ApplicationName,
-        //    });
-
-        //    Event newEvent = new Event()
-        //    {
-        //        Summary = GetNameFromArray(name),
-        //        Start = new EventDateTime()
-        //        {
-        //            Date = date
-        //        },
-        //        End = new EventDateTime()
-        //        {
-        //            Date = date
-        //        },
-        //    };
-
-        //    EventsResource.InsertRequest request = service.Events.Insert(newEvent, "primary");
-        //    Event createdEvent = request.Execute();
-        //    await ctx.RespondAsync("Az esemény el lett tárolva.");
-        //}
-
-        ////[Command("removeevent")]
-        ////public async Task RemoveEvent(CommandContext ctx, int id)
-        ////{
-
-        ////}
-
-        //[Command("upcoming")]
-        //[Description("Események listázása.")]
-        //public async Task Upcoming(CommandContext ctx, int maxRes = 5)
-        //{
-        //    CalendarCredentials CalCred = new CalendarCredentials();
-
-        //    var service = new CalendarService(new BaseClientService.Initializer()
-        //    {
-        //        HttpClientInitializer = CalCred.credential,
-        //        ApplicationName = CalendarCredentials.ApplicationName,
-        //    });
-
-        //    // Define parameters of request.
-        //    EventsResource.ListRequest request = service.Events.List("primary");
-        //    request.TimeMin = DateTime.Now;
-        //    request.ShowDeleted = false;
-        //    request.SingleEvents = true;
-        //    request.MaxResults = maxRes;
-        //    request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
-
-        //    // List events.
-        //    Events events = request.Execute();
-        //    await ctx.RespondAsync("Események a közeljövőben:");
-        //    if (events.Items != null && events.Items.Count > 0)
-        //    {
-        //        foreach (var eventItem in events.Items)
-        //        {
-        //            string when = eventItem.Start.DateTime.ToString();
-        //            if (String.IsNullOrEmpty(when))
-        //            {
-        //                when = eventItem.Start.Date;
-        //            }
-        //            await ctx.RespondAsync(string.Format("{0} ({1})", eventItem.Summary, when));
-        //        }
-        //    }
-        //    else
-        //    {
-        //        await ctx.RespondAsync("Nem találtam jövőbeni eseményt.");
-        //    }
-        //}
-
-        //#endregion
 
         #region currency commands
 
@@ -270,22 +196,17 @@ namespace KomobotV2
         public async Task Latest(CommandContext ctx, string curr = "EUR")
         {
             logger.Debug(ctx.User.Username + "called latest!");
-            FixerLatestResult result;
 
-            if (!ValidateCurrency(curr))
+            var service = Program.Container.Resolve<ICurrencyService>();
+
+            if(!service.Validate(curr))
             {
                 await ctx.RespondAsync("Nem megfelelő valutát irtál bázisnak bogárka...");
                 return;
             }
+            string url = Program.config.fixerPrefix + ctx.Command.Name + "?access_key=" + Program.config.fixerAPIKey + "&base=" + curr + "&symbols=HUF,EUR,GBP,USD";
 
-            using (var webClient = new WebClient())
-            {
-                string url = Program.config.fixerPrefix + ctx.Command.Name + "?access_key=" + Program.config.fixerAPIKey + "&base=" + curr + "&symbols=HUF,EUR,GBP,USD";
-
-                var response = webClient.DownloadString(new Uri(url));
-
-                result = new FixerLatestResult(response);
-            }
+            var result = await service.GetCurrencyResultsAsync(new Uri(url));
 
             await ctx.RespondAsync("1 EUR: \n" + result.HUF + " HUF\n" + result.USD + " USD\n" + result.GBP + " GBP.");
         }
@@ -301,16 +222,22 @@ namespace KomobotV2
             [Description("Visszaadja a Clash Royale Tag-edet.")]
             public async Task GetCRName(CommandContext ctx)
             {
-                logger.Debug(ctx.User.Username + "called CR getTag!");
-                var retVal = Komobase.GetCRTag(ctx.User.Username);
+                logger.Debug(ctx.User.Username + " called CR getTag!");
 
-                if (string.IsNullOrEmpty(retVal))
+                string tag = string.Empty;
+
+                using (KomoBaseAccess kba = new KomoBaseAccess())
+                {
+                    tag = kba.GetCRTag(ctx.User.Username);
+                }
+
+                if (string.IsNullOrEmpty(tag))
                 {
                     await ctx.RespondAsync("Nem találni a naplóban Clash Royale Tag-et! A setTag paranccsal beállithatod.");
                 }
                 else
                 {
-                    await ctx.RespondAsync("A te Clash Royale tag-ed: " + retVal + ".");
+                    await ctx.RespondAsync("A te Clash Royale tag-ed: " + tag + ".");
                 }
 
             }
@@ -322,133 +249,93 @@ namespace KomobotV2
                 logger.Debug(ctx.User.Username + "called CR setTag!");
                 if (ValidateID(tag))
                 {
-                    Komobase.SetCRTag(ctx.User.Username, tag.ToUpper());
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        kba.UpdateCRTag(ctx.User.Username, tag);
+                    }
 
                     await ctx.RespondAsync("Bevéstem a naplóba a Clash Royale tagedet " + ctx.User.Username + ".");
                 }
             }
 
-            [Command("Wins")]
-            [Description("Az eddigi Clash Royale win-ed száma.")]
-            public async Task GetCRWins(CommandContext ctx, string tag = null)
-            {
-                logger.Debug(ctx.User.Username + "called CR Wins!");
-                var result = await GetCRPlayerData(ctx.User.Username, tag);
+            //[Command("Wins")]
+            //[Description("Az eddigi Clash Royale win-ed száma.")]
+            //public async Task GetCRWins(CommandContext ctx, string tag = null)
+            //{
+            //    logger.Debug(ctx.User.Username + " called CR Wins!");
+            //    int result = 0;
+            //    if(tag == null)
+            //    {
+            //        using (KomoBaseAccess kba = new KomoBaseAccess())
+            //        {
+            //            tag = kba.GetCRTag(ctx.User.Username);
+            //        }
+            //    }
 
-                //TODO add to cache
+            //    if(tag == string.Empty)
+            //    {
+            //        await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
+            //        return;
+            //    }
+                
+            //    var service = Program.Container.Resolve<IClashRoyaleService>();
+            //    result = await service.GetWins(tag, Program.config.crEndpoint, Program.config.crAPIKEY);
 
-                if (result == null || result.wins == 0)
-                {
-                    await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
-                    return;
-                }
+            //    await ctx.RespondAsync("Hát neked bizony " + result + " wined van!");
+            //}
 
-                await ctx.RespondAsync("Hát neked bizony " + result.wins + " wined van!");
-            }
+            //[Command("Trophy")]
+            //[Description("Jelenlegi trófeáid.")]
+            //public async Task GetCRTrophies(CommandContext ctx, string tag = null)
+            //{
+            //    logger.Debug(ctx.User.Username + "called CR Trophy!");
+            //    int result = 0;
+            //    if (tag == null)
+            //    {
+            //        using (KomoBaseAccess kba = new KomoBaseAccess())
+            //        {
+            //            tag = kba.GetCRTag(ctx.User.Username);
+            //        }
+            //    }
 
-            [Command("Trophy")]
-            [Description("Jelenlegi trófeáid.")]
-            public async Task GetCRTrophies(CommandContext ctx, string tag = null)
-            {
-                logger.Debug(ctx.User.Username + "called CR Trophy!");
-                var result = await GetCRPlayerData(ctx.User.Username, tag);
+            //    if (tag == string.Empty)
+            //    {
+            //        await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
+            //        return;
+            //    }
 
-                //TODO add to cache
+            //    var service = Program.Container.Resolve<IClashRoyaleService>();
+            //    result = await service.GetWins(tag, Program.config.crEndpoint, Program.config.crAPIKEY);
 
-                if(result == null || result.trophies == 0)
-                {
-                    await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
-                    return;
-                }
+            //    await ctx.RespondAsync("Hát neked bizony " + result + " wined van!");
+            //}
 
-                await ctx.RespondAsync("Azta! " + result.trophies + " trófeán vagy. A legtöbb " + result.bestTrophies + " volt.");
-            }
+            //[Command("Info")]
+            //[Description("Általános Clash Royale információk.")]
+            //public async Task GetCRInfo(CommandContext ctx, string tag = null)
+            //{
+            //    logger.Debug(ctx.User.Username + " called CR Info!");
 
-            [Command("Info")]
-            [Description("Általános Clash Royale információk.")]
-            public async Task GetCRInfo(CommandContext ctx, string tag = null)
-            {
-                logger.Debug(ctx.User.Username + "called CR Info!");
-                try
-                {
+            //    string result = string.Empty;
+            //    if (tag == null)
+            //    {
+            //        using (KomoBaseAccess kba = new KomoBaseAccess())
+            //        {
+            //            tag = kba.GetCRTag(ctx.User.Username);
+            //        }
+            //    }
 
-                    StartStopWatch();
-                    //logger.Info(ctx.User.Username + " called " + System.Reflection.MethodBase.GetCurrentMethod(). + ".");
-                    var result = await GetCRPlayerData(ctx.User.Username, tag);
+            //    if (tag == string.Empty)
+            //    {
+            //        await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
+            //        return;
+            //    }
 
-                    //TODO add to cache
+            //    var service = Program.Container.Resolve<IClashRoyaleService>();
+            //    result = await service.GetInfo(tag, Program.config.crEndpoint, Program.config.crAPIKEY);
 
-                    if (result == null || result.trophies == 0)
-                    {
-                        await ctx.RespondAsync("Tag nélkül nem megy bogárka! Add meg paraméterként, vagy irjuk be a naplóba!");
-                        return;
-                    }
-
-                    StringBuilder builder = new StringBuilder();
-                    builder = builder.AppendLine("Tag: " + result.tag);
-                    builder = builder.AppendLine("Név: " + result.name);
-                    builder = builder.AppendLine("Clan: " + result.clan.name);
-                    builder = builder.AppendLine("Trófeák: " + result.trophies);
-                    builder = builder.AppendLine("Winek: " + result.wins);
-                    builder = builder.AppendLine("Szint: " + result.expLevel);
-
-                    await ctx.RespondAsync(builder.ToString());
-                    TimeSpan elapsed = StopStopWatch();
-                    logger.Info("GetCRInfo responded with: " + builder.ToString() + "after " + elapsed.ToString());
-                } catch (Exception e) { logger.Error("GetCRInfo failed", e); }
-            }
-        }
-
-        #endregion
-
-        #region PUBG commands
-
-        [Command("getPUBGID")]
-        public async Task GetPUBGID(CommandContext ctx)
-        {
-            var retVal = Komobase.GetPUBGID(ctx.User.Username);
-
-            if (string.IsNullOrEmpty(retVal))
-            {
-                await ctx.RespondAsync("Nem találni a naplóban a PUBG ID-dat! A setPUBGID paranccsal beállithatod.");
-            }
-            else
-            {
-                await ctx.RespondAsync("A te PUBG ID-d: " + retVal + ".");
-            }
-
-        }
-
-        [Command("setPUBGID")]
-        public async Task SetPUBGID(CommandContext ctx, string id = null)
-        {
-            if (ValidateID(id))
-            {
-                Komobase.SetPUBGID(ctx.User.Username, id);
-
-                await ctx.RespondAsync("Beirtam a naplóba a PUBG ID-dat " + ctx.User.Username + ".");
-            }
-        }
-
-        #endregion
-
-        #region Joke commands
-        [Command("vicc")]
-        [RequireOwner]
-        public async Task Joke(CommandContext ctx)
-        {
-            JokeResult jokeResult;
-
-            using (var webClient = new WebClient())
-            {
-                string url = GenerateAPIURL(Program.config.jokesPrefix);
-
-                var response = webClient.DownloadString(new Uri(url));
-
-                jokeResult = new JokeResult(response);
-            }
-
-            await ctx.RespondAsync(jokeResult.Joke);
+            //    await ctx.RespondAsync("Hát neked bizony " + result + " wined van!");
+            //}
         }
 
         #endregion
@@ -456,53 +343,36 @@ namespace KomobotV2
         #region Football data commands
         [Command("Standing")]
         [Description("Foci bajnokságok jelenlegi állása.")]
-        public async Task GetPLStanding(CommandContext ctx, string league = "")
+        public async Task GetLeagueStanding(CommandContext ctx, string league = "")
         {
             logger.Debug(ctx.User.Username + "called Standing!");
+            var service = Program.Container.Resolve<IFootballDataService>();
+
             if (league == string.Empty)
             {
                 await ctx.RespondAsync("Paraméterként add meg a liga nevét bogárka!", false, null);
-                await ctx.RespondAsync("Elérhető bajnokságok: " + GetLeagueNames());
+                await ctx.RespondAsync("Elérhető bajnokságok: " + service.GetLeagueNames());
                 return;
             }
 
-            if(!Enum.GetNames(typeof(FootballLeagues)).Any(x=> x.Equals(league)))
+            var validLeagueName = service.ValidateLeagueName(league);
+            if(!validLeagueName)
             {
-                await ctx.RespondAsync("Ejha, a liga neve hibádzik!", false, null);
-                await ctx.RespondAsync("Elérhető bajnokságok: " + GetLeagueNames());
+                await ctx.RespondAsync("Ejha! A liga neve hibádzik!");
                 return;
             }
-
-            var id = Enum.Parse(typeof(FootballLeagues), league);
-
-            string url = Program.config.footballDataEndpoint + "competitions/"+(int) id+"/standings";
-
-            HttpWebRequest request = HttpWebRequest.CreateHttp(url);
-            request.Headers.Set("X-Auth-Token", Program.config.footballDataKey);
-
-            var response = (HttpWebResponse)await request.GetResponseAsync();
-
-            var code = response.StatusCode;
-
-            if (HttpStatusCode.OK == code)
+            try
             {
-                System.IO.Stream stream = response.GetResponseStream();
-                StreamReader reader = new StreamReader(stream);
-
-                string resultString = await reader.ReadToEndAsync();
-
-                var result = JsonConvert.DeserializeObject<FootballDataStandingsResult>(resultString);
-
-                StringBuilder builder = new StringBuilder();
-                builder.AppendLine(id.ToString()+" tabella:");
-
-                foreach(var standing in result.standings.FirstOrDefault().table)
-                {
-                    builder.AppendLine(standing.position + ". " + standing.team.name+"\t "+standing.points+" pont, "+standing.playedGames+" meccs");
-                }
-
-                await ctx.RespondAsync(builder.ToString());
+                var result = await service.GetLeagueStanding(league, Program.config.footballDataEndpoint, Program.config.footballDataKey);
+                await ctx.RespondAsync(result);
             }
+            catch (Exception e)
+            {
+                logger.Error(e.Message);
+                await ctx.RespondAsync("Hiba történt az adatok lekérésében!");
+            }
+
+            
         }
         #endregion
 
@@ -511,27 +381,36 @@ namespace KomobotV2
         [Description("WoW related commands")]
         public class BlizzardGroupedCommands
         {
-            [Command("setName")]
-            public async Task SetWowRealmAndName(CommandContext ctx, string realm, string name)
-            {
-                logger.Debug(ctx.User.Username + "called wow setName!");
-                Komobase.SetWowRealmAndName(ctx.User.Username, realm, name);
+            //[Command("setName")]
+            //public async Task SetWowRealmAndName(CommandContext ctx, string realm, string name)
+            //{
+            //    logger.Debug(ctx.User.Username + "called wow setName!");
+            //    using (KomoBaseAccess kba = new KomoBaseAccess())
+            //    {
+            //        kba.
+            //    }
 
-                await ctx.RespondAsync("Beirtam a naplóba a realmodat és a karaktered nevét!");
-            }
+            //        await ctx.RespondAsync("Beirtam a naplóba a realmodat és a karaktered nevét!");
+            //}
 
             [Command("KarakterInfo")]
             [Description("Standard character info.")]
             public async Task GetCharInfo(CommandContext ctx, string server, string name)
             {
-                logger.Debug(ctx.User.Username + "called WoW KarakterInfo!");
-                var client = await ConstructBlizzardCharClient(server, name);
+                logger.Debug(ctx.User.Username + " called WoW KarakterInfo!");
+                var service = Program.Container.Resolve<IWoWService>();
+                service.CharInfoEndpoint = Program.config.blizzardCharInfoEndpoint;
+                service.CharName = name;
+                service.Realm = server;
+                service.client_id = Program.config.client_id;
+                service.client_secret = Program.config.client_secret;
+                service.OauthAccessTokenEndpoint = Program.config.blizzardOauthAccessTokenEndpoint;
+                service.OauthCheckTokenEndpoint = Program.config.blizzardOauthCheckTokenEndpoint;
 
-                var resp = await client.ExecuteTaskAsync(new RestRequest());
-                if (resp.StatusCode == HttpStatusCode.OK)
+                var response = await service.GetCharInfo();
+
+                if(response != null)
                 {
-                    CharInfoResponse response = JsonConvert.DeserializeObject<CharInfoResponse>(resp.Content);
-
                     DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
                     {
                         Title = response.name,
@@ -547,92 +426,88 @@ namespace KomobotV2
                     await ctx.RespondAsync(null, false, builder.Build());
                     return;
                 }
+
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
 
-            //[Command("KarakterInfo")]
-            //[Description("Standard character info.")]
-            //public async Task GetCharInfo(CommandContext ctx)
+            //[Command("MennyiMount")]
+            //[Description("Sum of the number of aquired mounts.")]
+            //public async Task GetMounts(CommandContext ctx, string server, string name)
             //{
-            //    Komobase.GetWowRealmAndName(ctx.User.Username);
+            //    logger.Debug(ctx.User.Username + "called wow mennyimount!");
+            //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
+
+            //    var response = await client.ExecuteTaskAsync(new RestRequest());
+            //    if (response.StatusCode == HttpStatusCode.OK)
+            //    {
+            //        CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
+
+            //        int numberOfMounts = resp.mounts.numCollected;
+
+            //        await ctx.RespondAsync("Ejha! " + resp.name + " " + numberOfMounts + " mounttal rendelkezik!");
+            //        return;
+            //    }
+            //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             //}
 
-            [Command("MennyiMount")]
-            [Description("Sum of the number of aquired mounts.")]
-            public async Task GetMounts(CommandContext ctx, string server, string name)
-            {
-                logger.Debug(ctx.User.Username + "called wow mennyimount!");
-                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
+            //[Command("Feed")]
+            //[Description("Recent activity.")]
+            //public async Task GetFeed(CommandContext ctx, string server, string name, int count = 5, string filter = "")
+            //{
+            //    logger.Debug(ctx.User.Username + "called " + ctx.Command.Name);
+            //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "feed", ParameterType.QueryString));
 
-                var response = await client.ExecuteTaskAsync(new RestRequest());
-                if(response.StatusCode == HttpStatusCode.OK)
-                {
-                    CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
+            //    var response = await client.ExecuteTaskAsync(new RestRequest());
+            //    if (response.StatusCode == HttpStatusCode.OK)
+            //    {
+            //        CharInfoWithFeedResponse resp = JsonConvert.DeserializeObject<CharInfoWithFeedResponse>(response.Content);
 
-                    int numberOfMounts = resp.mounts.numCollected;
+            //        //elvileg a most recent az első és sorban van
+            //        filter = filter.ToUpper();
+            //        if (filter == "BOSSKILL" || filter == "ACHIEVEMENT" || filter == "LOOT")
+            //        {
+            //            resp.feed = (from feeds in resp.feed
+            //                         where feeds.type == filter
+            //                         select feeds).ToList();
+            //        }
+            //        var requiredRows = resp.feed.Take(count > resp.feed.Count ? resp.feed.Count : count);
 
-                    await ctx.RespondAsync("Ejha! " + resp.name + " " + numberOfMounts + " mounttal rendelkezik!");
-                    return;
-                }
-                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            }
+            //        string responseRows = string.Empty;
 
-            [Command("Feed")]
-            [Description("Recent activity.")]
-            public async Task GetFeed(CommandContext ctx, string server, string name, int count = 5, string filter = "")
-            {
-                logger.Debug(ctx.User.Username + "called "+ ctx.Command.Name);
-                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "feed", ParameterType.QueryString));
+            //        foreach (Feed feed in requiredRows)
+            //        {
+            //            string row = ConstructFeedStringDependingOnType(feed);
+            //            responseRows += row + "\n";
+            //        }
 
-                var response = await client.ExecuteTaskAsync(new RestRequest());
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    CharInfoWithFeedResponse resp = JsonConvert.DeserializeObject<CharInfoWithFeedResponse>(response.Content);
+            //        await ctx.RespondAsync(responseRows, false, null);
+            //        return;
+            //    }
 
-                    //elvileg a most recent az első és sorban van
-                    filter = filter.ToUpper();
-                    if(filter == "BOSSKILL" || filter == "ACHIEVEMENT" || filter == "LOOT")
-                    {
-                        resp.feed = (from feeds in resp.feed
-                                    where feeds.type == filter
-                                    select feeds).ToList();
-                    }
-                    var requiredRows = resp.feed.Take(count > resp.feed.Count ? resp.feed.Count : count);
+            //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            //}
 
-                    string responseRows = string.Empty;
+            //[Command("Exa")]
+            //[Description("Number of exalted reputations.")]
+            //public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
+            //{
+            //    logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
 
-                    foreach (Feed feed in requiredRows)
-                    {
-                        string row = ConstructFeedStringDependingOnType(feed);
-                        responseRows += row + "\n";
-                    }
 
-                    await ctx.RespondAsync(responseRows, false, null);
-                    return;
-                }
+            //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
 
-                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            }
+            //    var response = await client.ExecuteTaskAsync(new RestRequest());
+            //    if (response.StatusCode == HttpStatusCode.OK)
+            //    {
+            //        var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
 
-            [Command("Exa")]
-            [Description("Number of exalted reputations.")]
-            public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
-            {
-                logger.Debug(ctx.User.Username + "called " + ctx.Command.Name);
-                var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
+            //        var numberOfExas = replist.Where(x => x.standing == 7).Count();
 
-                var response = await client.ExecuteTaskAsync(new RestRequest());
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
-
-                    var numberOfExas = replist.Where(x => x.standing == 7).Count();
-
-                    await ctx.RespondAsync(name + " karakteren jelenleg " + numberOfExas + " exalted repu van!");
-                    return;
-                }
-                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            }
+            //        await ctx.RespondAsync(name + " karakteren jelenleg " + numberOfExas + " exalted repu van!");
+            //        return;
+            //    }
+            //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            //}
         }
         #endregion
 
@@ -645,206 +520,105 @@ namespace KomobotV2
             [Description("Megnézzük, online-e a stream.")]
             public async Task GetStreamOnline(CommandContext ctx, string channel)
             {
-                try
-                {
-                    var response = await RetrieveTwitchChannelInfo(channel);
+                 var service = Program.Container.Resolve<ITwitchService>();
+                 var response = await service.GetStreamOnline(channel);
 
-                    //elvégre csak 1et kérünk vissza...
-                    var stream = response.Streams.FirstOrDefault();
-
-                    if(stream is null)
-                    {
-                        await ctx.RespondAsync(channel + " jelenleg nem streamel!");
-                    }
-                    else
-                    {
-                        await ctx.RespondAsync(channel + " most online!" + GetTimeLapsedFormattedString(stream.StartedAt) + " streamel. " +
-                        "Streamjét jelenleg " + stream.ViewerCount + " ember nézi.");
-                    }
-                    
-                }
-                catch(TwitchStreamNotFoundException) { await ctx.RespondAsync("Nem találni ilyen streamet!"); }
-                catch(Exception e) { await ctx.RespondAsync("Valami hiba történt!"); logger.Error("GetStreamOnline", e); }
+                 if(response.Online)
+                 {
+                     await ctx.RespondAsync(channel + " most online! " + response.TimeLapsedString + " streamel. " +
+                     "Streamjét jelenleg " + response.ViewerCount + " ember nézi.");
+                 }
+                 else
+                 {
+                     await ctx.RespondAsync(channel + " jelenleg nem online!");
+                 }
             }
         }
         #endregion
 
-        #region private methods
-        private static string GetTimeLapsedFormattedString(DateTime startedAt)
+        #region QrCode related commands
+        [Group("QRcode")]
+        [Description("QR kód generálására használatos parancsok.")]
+        public class QrCodeGroupedCommands
         {
-            var timeLapsed = DateTime.UtcNow - startedAt.ToUniversalTime();
-            return timeLapsed.Hours + " órája, " + timeLapsed.Minutes + " perce";
-        }
-
-        private static string ConstructFeedStringDependingOnType(Feed feed)
-        {
-            string retVal = GetDateTimeFromTimeStamp(long.Parse(feed.timestamp.ToString())).ToString()+" ";
-            switch (feed.type)
+            [Command("url")]
+            public async Task GetQrCodeFromUrl(CommandContext ctx, string url)
             {
-                case "BOSSKILL":
-                    retVal += "Legyőzte " + feed.achievement.title + "-t (" + feed.quantity + ". alkalommal)";
-                    break;
-                case "LOOT":
-                    retVal += "Lootolta a " + feed.itemId + " itemID-s itemet.";
-                    break;
-                case "ACHIEVEMENT":
-                    retVal += "Megszerezte a " + feed.achievement.title + " achit! (" + feed.achievement.points + " pont)";
-                    break;
+                try
+                {
+                    var service = Program.Container.Resolve<IQrCodeCreatorService>();
+                    var result = service.UriToQrCode(url);
+
+                    await ctx.RespondWithFileAsync(Path.Combine(Directory.GetCurrentDirectory(),@"temp.jpg"), "Parancsolj!");
+                }
+                catch(Exception e) { Console.WriteLine(e.Message); }
                 
             }
-
-            return retVal;
         }
+        #endregion
 
-        private async static Task<Models.Streams.GetStreamsResponse> RetrieveTwitchChannelInfo(string channel)
+        #region Strava commands
+
+        [Group("Strava", CanInvokeWithoutSubcommand = false)]
+        public class StravaGroupedCommands
         {
-            //Előbb kell ID, mert csak azzal megy a hivás...
-            var response = await Program.API.V5.Users.GetUserByNameAsync(channel);
-            if(response.Total == 0)
+            [Command("info")]
+            [Description("Általános információk.")]
+            public async Task StravaInfo(CommandContext ctx, int id)
             {
-                throw new TwitchStreamNotFoundException("The GetUserByNameAsync returned with no data.");
+                var service = Program.Container.Resolve<IStravaService>();
+                var result = await service.StravaInfo(id, Program.config.stravaSecret, Program.config.stravaClientID,
+                    Program.config.stravaRefreshToken);
+                await ctx.RespondAsync(result);
             }
-
-            var userid = response.Matches[0].Id;
-
-            return await Program.API.Helix.Streams.GetStreamsAsync(null,null,1,null,null,"all",new List<string>() { userid },null);
         }
 
-        private async static Task<RestClient> ConstructBlizzardCharClient(string server, string name, params Parameter[] parameters)
+        #endregion
+
+        #region ServerMaintainingCommands
+        [Group("Kick",CanInvokeWithoutSubcommand = false)]
+        public class KickGroupedCommands
         {
-            string token = await RetrieveAuthToken();
-
-            string url = Program.config.blizzardCharInfoEndpoint + @"/" + server + @"/" + name;
-            RestClient client = new RestClient(url);
-            client.AddDefaultParameter(new Parameter("locale", "en_US", ParameterType.QueryString));
-            client.AddDefaultParameter(new Parameter("access_token", token, ParameterType.QueryString));
-
-            foreach(var parameter in parameters)
+            [Command("id")]
+            [RequireOwner]
+            [Description("Kickel id alapján egy membert.")]
+            public async Task KickMember(CommandContext ctx, ulong id)
             {
-                client.AddDefaultParameter(parameter);
+                var user = ctx.Channel.Guild.Members.FirstOrDefault(x => x.Id == id);
+                if (user == null)
+                {
+                    await ctx.RespondAsync("Hibás ID! Nem tudtam kit kickelni!");
+                    return;
+                }
+                await user.BanAsync(0,ctx.Member.Username +" adta ki a parancsot.");
+                await ctx.RespondAsync("Hahaha! " + user.Username + " olyan banhammert kapott hogy ihaj!");
             }
 
-            return client;
+            [Command("name")]
+            [RequireOwner]
+            [Description("Kickel name alapján egy membert.")]
+            public async Task KickMember(CommandContext ctx, string username)
+            {
+                var users = ctx.Channel.Guild.Members.Where(x => x.Username == username);
+
+                if (users == null || users.Count() == 0)
+                {
+                    await ctx.RespondAsync("Hibás név! Nem tudtam kit kickelni!");
+                    return;
+                }
+                if(users.Count() > 1)
+                {
+                    await ctx.RespondAsync("Megegyező nevek! Add ki a parancsot ID alapján!");
+                }
+
+                await users.FirstOrDefault().BanAsync(0, ctx.Member.Username + " adta ki a parancsot.");
+                await ctx.RespondAsync("Hahaha! " + username + " olyan banhammert kapott hogy ihaj!");
+            }
         }
+        #endregion
 
-        private static async Task<string> RetrieveAuthToken()
-        {
-            var tokenFromDB = Komobase.GetAuthToken();
-
-            if(tokenFromDB == string.Empty)
-            {
-                string token = await GetAuthTokenFromBlizzard();
-                Komobase.SetAuthToken(token);
-                return token;
-            }
-
-            if(await ValidateToken(tokenFromDB) != true)
-            {
-                string token = await GetAuthTokenFromBlizzard();
-                Komobase.SetAuthToken(token);
-                return token;
-            }
-
-            return tokenFromDB;
-        }
-
-        private static async Task<bool> ValidateToken(string token)
-        {
-            string resultString = string.Empty;
-
-            RestClient client = new RestClient(Program.config.blizzardOauthCheckTokenEndpoint);
-            RestRequest request = new RestRequest(Program.config.blizzardOauthCheckTokenEndpoint,Method.GET,DataFormat.Json);
-            //ez parameter is a faszért van elírva a dokumentációban
-            request.AddParameter("token",token);
-            var response = await client.ExecuteTaskAsync(request);
-
-            if(response.StatusCode == HttpStatusCode.OK)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        private static async Task<string> GetAuthTokenFromBlizzard()
-        {
-            var url = Program.config.blizzardOauthAccessTokenEndpoint;
-
-            var client = new RestClient(url);
-            client.AddDefaultParameter("grant_type", "client_credentials");
-            var request = new RestRequest(Method.POST);
-            request.AddHeader("cache-control", "no-cache");
-            request.AddParameter("grant_type", "client_credentials");
-            request.AddParameter("client_id", Program.config.client_id);
-            request.AddParameter("client_secret", Program.config.client_secret);
-
-            var respone = await client.ExecuteTaskAsync(request);
-
-            return JsonConvert.DeserializeObject<AccessTokenResponse>(respone.Content).access_token;
-        }
-
-        private string GetLeagueNames()
-        {
-            var retVal = string.Empty;
-
-            foreach (string name in Enum.GetNames(typeof(FootballLeagues)))
-            {
-                retVal += name + " ";
-            }
-
-            return retVal;
-        }
-
-        private bool CheckOwnershipIsTrue(CommandContext ctx)
-        {
-            if (ctx != null && ctx.Member != null)
-            {
-                if (ctx.Member.IsOwner)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private string GenerateAPIURL(string @base, string key = null, params string[] flags)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb = sb.Append(@base);
-            if (key != null)
-            {
-                sb = sb.Append(key);
-            }
-            if (flags != null && flags.Count() > 0)
-            {
-                foreach (string flag in flags)
-                    sb = sb.Append(flag);
-            }
-
-            return sb.ToString();
-        }
-
-        private bool ValidateCurrency(string curr)
-        {
-            if (curr == "EUR" || curr == "USD" || curr == "GBP")
-                return true;
-            return false;
-        }
-
-        private string GetNameFromArray(string[] array)
-        {
-            string retVal = string.Empty;
-
-            if (array == null)
-            {
-                throw new ArgumentNullException();
-            }
-            foreach (string element in array)
-            {
-                retVal += element + " ";
-            }
-
-            return retVal;
-        }
-        //TODO
+        #region private methods     
+       //TODO
         private static bool ValidateID(string id)
         {
             if (id == null || id == string.Empty || !(id.Length > 2))
@@ -852,59 +626,6 @@ namespace KomobotV2
                 return false;
             }
             return true;
-        }
-        //TODO
-        private static bool ValidateCRTag(string tag)
-        {
-            if (tag == null || tag == string.Empty || !(tag.Length > 2))
-            {
-                return false;
-            }
-            return true;
-        }
-
-        private static string URLEncodeCRTag(string tag)
-        {
-            return tag.Replace("#", "%23");
-        }
-
-        private static async Task<PlayerResult> GetCRPlayerData(string userName, string tag)
-        {
-            if (string.IsNullOrEmpty(tag))
-            {
-                tag = Komobase.GetCRTag(userName).ToUpper();
-            }
-            if (string.IsNullOrEmpty(tag))
-            {
-
-                return new PlayerResult();
-            }
-
-            string url = Program.config.crEndpoint + "players/" + URLEncodeCRTag(tag);
-            try
-            {
-                HttpWebRequest request = HttpWebRequest.CreateHttp(url);
-                request.Method = "GET";
-                request.Accept = "application/json";
-                request.Headers.Set(HttpRequestHeader.Authorization, "Bearer " + Program.config.crAPIKEY);
-
-                var response = (HttpWebResponse)await request.GetResponseAsync();
-
-                var code = response.StatusCode;
-
-                if (HttpStatusCode.OK == code)
-                {
-                    System.IO.Stream stream = response.GetResponseStream();
-                    StreamReader reader = new StreamReader(stream);
-
-                    string resultString = await reader.ReadToEndAsync();
-
-                    return JsonConvert.DeserializeObject<PlayerResult>(resultString);
-                }
-            }
-            catch (Exception e) { throw new Exception(e.Message, e.InnerException); }
-
-            return new PlayerResult();
         }
 
         private static void StartStopWatch()
@@ -931,12 +652,6 @@ namespace KomobotV2
             stopwatch.Reset();
 
             return retVal;
-        }
-
-        private static DateTime GetDateTimeFromTimeStamp(long timestamp)
-        {
-            var epoch = new DateTime(1970, 1, 1, 1, 0, 0, DateTimeKind.Utc);
-            return epoch.AddMilliseconds(timestamp);
         }
         #endregion
 
