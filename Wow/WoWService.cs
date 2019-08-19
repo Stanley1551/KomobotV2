@@ -11,18 +11,25 @@ namespace Wow
 {
     public class WoWService : IWoWService
     {
-        public string Realm { get; set; }
-        public string CharName { get; set; }
         public string CharInfoEndpoint { get; set; }
-        public string client_secret { get; set; }
-        public string client_id { get; set; }
+        public string Client_secret { get; set; }
+        public string Client_id { get; set; }
         public string OauthCheckTokenEndpoint { get; set; }
         public string OauthAccessTokenEndpoint { get; set; }
         private string Token { get; set; }
 
-        public async Task<CharInfoResponse> GetCharInfo()
+        public WoWService(string blizzardCharInfoEndpoint, string blizzardOauthAccessTokenEndpoint, string blizzardOauthCheckTokenEndpoint, string client_id, string client_secret)
         {
-            var client = await ConstructBlizzardCharClient();
+            CharInfoEndpoint = blizzardCharInfoEndpoint;
+            OauthAccessTokenEndpoint = blizzardOauthAccessTokenEndpoint;
+            OauthCheckTokenEndpoint = OauthCheckTokenEndpoint;
+            Client_id = client_id;
+            Client_secret = client_secret;
+        }
+
+        public async Task<CharInfoResponse> GetCharInfo(string realm, string charname)
+        {
+            var client = await ConstructBlizzardCharClient(realm, charname);
 
             var resp = await client.ExecuteTaskAsync(new RestRequest());
             if (resp.StatusCode == HttpStatusCode.OK)
@@ -30,6 +37,24 @@ namespace Wow
                 return JsonConvert.DeserializeObject<CharInfoResponse>(resp.Content);
             }
             else throw new Exception("Error during CharInfoRequest...");
+        }
+
+        public async Task<CharInfoResponse> GetCharInfo(string username)
+        {
+            string charname;
+            string realm;
+
+            using (KomoBase.KomoBaseAccess kba = new KomoBase.KomoBaseAccess())
+            {
+                charname = kba.GetWoWCharName(username);
+                realm = kba.GetWoWRealmName(username);
+            }
+
+            if (!String.IsNullOrEmpty(charname) && !String.IsNullOrEmpty(realm))
+            {
+                return await GetCharInfo(realm, charname);
+            }
+            else throw new ArgumentException("Charname and/or realm name is not present in the database.");
         }
 
         private async Task<bool> ValidateToken()
@@ -58,8 +83,8 @@ namespace Wow
             var request = new RestRequest(Method.POST);
             request.AddHeader("cache-control", "no-cache");
             request.AddParameter("grant_type", "client_credentials");
-            request.AddParameter("client_id", client_id);
-            request.AddParameter("client_secret", client_secret);
+            request.AddParameter("client_id", Client_id);
+            request.AddParameter("client_secret", Client_secret);
 
             var respone = await client.ExecuteTaskAsync(request);
 
@@ -72,7 +97,7 @@ namespace Wow
             {
                 var tokenFromDB = kba.GetAuthToken();
 
-                if (tokenFromDB == string.Empty)
+                if (String.IsNullOrEmpty(tokenFromDB))
                 {
                     string token = await GetAuthTokenFromBlizzard();
                     kba.SetAuthToken(token);
@@ -90,16 +115,18 @@ namespace Wow
             }
         }
 
-        private async Task<RestClient> ConstructBlizzardCharClient()
+        private async Task<RestClient> ConstructBlizzardCharClient(string realm, string charname)
         {
             Token = await RetrieveAuthToken();
 
-            string url = CharInfoEndpoint + @"/" + Realm + @"/" + CharName;
+            string url = CharInfoEndpoint + @"/" + realm + @"/" + charname;
             RestClient client = new RestClient(url);
             client.AddDefaultParameter(new Parameter("locale", "en_US", ParameterType.QueryString));
             client.AddDefaultParameter(new Parameter("access_token", Token, ParameterType.QueryString));
 
             return client;
         }
+
+        
     }
 }

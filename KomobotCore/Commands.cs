@@ -9,7 +9,6 @@ using Newtonsoft.Json;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.CommandsNext.Attributes;
-using RestSharp;
 using KomobotV2.Logger;
 using KomobotCore;
 using Currency;
@@ -21,6 +20,8 @@ using KomoBase;
 using Wow;
 using Twitch;
 using Wow.Enums;
+using System.Threading;
+using Wow.Responses;
 
 namespace KomobotV2
 {
@@ -30,6 +31,28 @@ namespace KomobotV2
         private static Stopwatch stopwatch = new Stopwatch();
 
         #region misc
+        [Command("echo")]
+        public async Task Echo(CommandContext ctx, string text)
+        {
+            logger.Debug(ctx.User.Username + " called Echo!");
+            await ctx.RespondAsync(text, true);
+        }
+
+        [Command("Sorfeles")]
+        public async Task Sorfeles(CommandContext ctx, int interval)
+        {
+            logger.Debug(ctx.User.Username + " called Sorfeles!");
+
+            await Task.Run(async () =>
+           {
+               for (int i = 0; i < 10; i++)
+               {
+                   Thread.Sleep(interval * 1000);
+                   await ctx.RespondAsync("Drink!", true);
+               }
+           });
+        }
+
         [Command("doksi")]
         public async Task Doksi(CommandContext ctx)
         {
@@ -381,17 +404,75 @@ namespace KomobotV2
         [Description("WoW related commands")]
         public class BlizzardGroupedCommands
         {
-            //[Command("setName")]
-            //public async Task SetWowRealmAndName(CommandContext ctx, string realm, string name)
-            //{
-            //    logger.Debug(ctx.User.Username + "called wow setName!");
-            //    using (KomoBaseAccess kba = new KomoBaseAccess())
-            //    {
-            //        kba.
-            //    }
+            [Command("setName")]
+            public async Task SetWowName(CommandContext ctx, string name)
+            {
+                logger.Debug(ctx.User.Username + " called wow setName!");
+                try
+                {
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        kba.UpdateWowCharName(ctx.User.Username, name);
+                    }
+                    await ctx.RespondAsync("Beirtam a naplóba a karaktered nevét!");
+                }
+                catch (Exception) { await ctx.RespondAsync("Valami hiba történt!"); }
+            }
 
-            //        await ctx.RespondAsync("Beirtam a naplóba a realmodat és a karaktered nevét!");
-            //}
+            [Command("setRealm")]
+            public async Task SetWowRealm(CommandContext ctx, string realm)
+            {
+                logger.Debug(ctx.User.Username + " called SetWowRealm!");
+                try
+                {
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        kba.UpdateWowRealm(ctx.User.Username, realm);
+                    }
+                    await ctx.RespondAsync("Beirtam a naplóba a realmodat!");
+                }
+                catch (Exception) { await ctx.RespondAsync("Valami hiba történt!"); }
+            }
+
+            [Command("setRealmCharname")]
+            public async Task SetWowRealmAndName(CommandContext ctx, string realm, string charname)
+            {
+                logger.Debug(ctx.User.Username + " called setRealmCharname!");
+                try
+                {
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        kba.UpdateWowRealm(ctx.User.Username, realm);
+                        kba.UpdateWowCharName(ctx.User.Username, charname);
+                    }
+                    await ctx.RespondAsync("Beirtam a naplóba a realmodat és a nevedet!");
+                }
+                catch (Exception) { await ctx.RespondAsync("Valami hiba történt!"); }
+            }
+
+            [Command("Karakter")]
+            [Description("Standard character info.")]
+            public async Task GetCharInfo(CommandContext ctx)
+            {
+                logger.Debug(ctx.User.Username + " called WoW KarakterInfo!");
+                var service = Program.Container.Resolve<IWoWService>();
+                CharInfoResponse response;
+
+                try
+                {
+                    response = await service.GetCharInfo(ctx.Member.Username);
+                } catch (ArgumentException) { await ctx.RespondAsync("Nem találni a karaktered adatait! Mentsük el előtte, vagy add ki a parancsot specifikusan!"); return; }
+
+                if (response != null)
+                {
+                    DiscordEmbed embed = GetWowCharInfoEmbed(response);
+
+                    await ctx.RespondAsync(null, false, embed);
+                    return;
+                }
+
+                await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
+            }
 
             [Command("KarakterInfo")]
             [Description("Standard character info.")]
@@ -399,31 +480,14 @@ namespace KomobotV2
             {
                 logger.Debug(ctx.User.Username + " called WoW KarakterInfo!");
                 var service = Program.Container.Resolve<IWoWService>();
-                service.CharInfoEndpoint = Program.config.blizzardCharInfoEndpoint;
-                service.CharName = name;
-                service.Realm = server;
-                service.client_id = Program.config.client_id;
-                service.client_secret = Program.config.client_secret;
-                service.OauthAccessTokenEndpoint = Program.config.blizzardOauthAccessTokenEndpoint;
-                service.OauthCheckTokenEndpoint = Program.config.blizzardOauthCheckTokenEndpoint;
-
-                var response = await service.GetCharInfo();
+                
+                var response = await service.GetCharInfo(server, name);
 
                 if(response != null)
                 {
-                    DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
-                    {
-                        Title = response.name,
-                        ImageUrl = @"http://render-eu.worldofwarcraft.com/character/" + response.thumbnail,
-                        Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
-                        Enum.GetName(typeof(@class), response.@class),
-                        Url = "https://worldofwarcraft.com/en-gb/character/" + server + "/" + name,
-                        Color = response.faction == 0 ? DiscordColor.Blue : DiscordColor.Red
-                    };
-                    builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
-                    builder.AddField("Achievement points:", response.achievementPoints.ToString());
+                    DiscordEmbed embed = GetWowCharInfoEmbed(response);
 
-                    await ctx.RespondAsync(null, false, builder.Build());
+                    await ctx.RespondAsync(null, false, embed);
                     return;
                 }
 
@@ -434,7 +498,7 @@ namespace KomobotV2
             //[Description("Sum of the number of aquired mounts.")]
             //public async Task GetMounts(CommandContext ctx, string server, string name)
             //{
-            //    logger.Debug(ctx.User.Username + "called wow mennyimount!");
+            //    logger.Debug(ctx.User.Username + " called wow mennyimount!");
             //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
 
             //    var response = await client.ExecuteTaskAsync(new RestRequest());
@@ -618,6 +682,24 @@ namespace KomobotV2
         #endregion
 
         #region private methods     
+
+        private static DiscordEmbed GetWowCharInfoEmbed(CharInfoResponse response)
+        {
+            DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
+            {
+                Title = response.name,
+                ImageUrl = @"http://render-eu.worldofwarcraft.com/character/" + response.thumbnail,
+                Description = "level " + response.level + " " + Enum.GetName(typeof(Gender), response.gender) + " " + Enum.GetName(typeof(Race), response.race) + " " +
+                        Enum.GetName(typeof(@class), response.@class),
+                Url = "https://worldofwarcraft.com/en-gb/character/" + response.realm + "/" + response.name,
+                Color = response.faction == 0 ? DiscordColor.Blue : DiscordColor.Red
+            };
+            builder.AddField("Honorable kills:", response.totalHonorableKills.ToString());
+            builder.AddField("Achievement points:", response.achievementPoints.ToString());
+
+            return builder.Build();
+        }
+
        //TODO
         private static bool ValidateID(string id)
         {

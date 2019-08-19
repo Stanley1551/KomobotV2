@@ -8,13 +8,12 @@ namespace Wow
 {
     public interface IWoWService
     {
-        Task<CharInfoResponse> GetCharInfo();
+        Task<CharInfoResponse> GetCharInfo(string realm, string charname);
+        Task<CharInfoResponse> GetCharInfo(string username);
 
-        string Realm { get; set; }
-        string CharName { get; set; }
         string CharInfoEndpoint { get; set; }
-        string client_secret { get; set; }
-        string client_id { get; set; }
+        string Client_secret { get; set; }
+        string Client_id { get; set; }
         string OauthCheckTokenEndpoint { get; set; }
         string OauthAccessTokenEndpoint { get; set; }
     }

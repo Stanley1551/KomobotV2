@@ -48,7 +48,6 @@ namespace KomobotCore
             Container.RegisterType<IFootballDataService, FootballDataService>();
             Container.RegisterType<IStravaService, StravaService>();
             Container.RegisterType<IClashRoyaleService, ClashRoyaleService>();
-            Container.RegisterType<IWoWService, WoWService>();
 
             try
             {
@@ -57,7 +56,8 @@ namespace KomobotCore
             catch (Exception e) { logger.Fatal("Loading configuration", e); Console.ReadKey(); return; }
 
             Container.RegisterType<ITwitchService, TwitchService>(new InjectionConstructor(config.twitchClientID, config.twitchAccessToken, config.twitchChannelsToMonitor));
-
+            Container.RegisterType<IWoWService, WoWService>(new InjectionConstructor(config.blizzardCharInfoEndpoint, config.blizzardOauthAccessTokenEndpoint, config.blizzardOauthCheckTokenEndpoint,
+                config.client_id, config.client_secret));
 
             DiscordClient client = new DiscordClient(new DiscordConfiguration()
             {

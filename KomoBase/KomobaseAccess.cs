@@ -117,6 +117,80 @@ namespace KomoBase
             return GetUserCRTag(id);
         }
 
+        public string GetWoWRealmName(string username)
+        {
+            int id = GetUserID(username);
+
+            if (UserExistsInWoWTable(id))
+            {
+                return GetWoWRealmName(id);
+            }
+            else return string.Empty;
+        }
+
+        public string GetWoWRealmName(int id)
+        {
+            return GetUserWoWRealm(id);
+        }
+
+        public string GetWoWCharName(string username)
+        {
+            int id = GetUserID(username);
+
+            if (UserExistsInWoWTable(id))
+            {
+                return GetWoWCharName(id);
+            }
+            else return string.Empty;
+        }
+
+        public string GetWoWCharName(int id)
+        {
+            return GetUserWoWCharName(id);
+        }
+
+        public void UpdateWowRealm(string username, string realm)
+        {
+            int id = GetUserID(username);
+
+            Wow wow = new Wow()
+            {
+                Realm = realm,
+                UserID = id,
+                WowCharName = GetWoWCharName(id)
+            };
+
+            if (UserExistsInWoWTable(id))
+            {
+                connection.Update(wow, typeof(Wow));
+            }
+            else
+            {
+                connection.Insert(wow, typeof(Wow));
+            }
+        }
+
+        public void UpdateWowCharName(string username, string charname)
+        {
+            int id = GetUserID(username);
+
+            Wow wow = new Wow()
+            {
+                UserID = id,
+                Realm = GetUserWoWRealm(id),
+                WowCharName = charname
+            };
+
+            if (UserExistsInWoWTable(id))
+            {
+                connection.Update(wow, typeof(Wow));
+            }
+            else
+            {
+                connection.Insert(wow, typeof(Wow));
+            }
+        }
+
         public void Dispose()
         {
             connection.Close();
@@ -195,9 +269,35 @@ namespace KomoBase
                 return true;
         }
 
+        private bool UserExistsInWoWTable(int id)
+        {
+            var result = connection.ExecuteScalar<int>(@"SELECT UserID FROM Wow WHERE UserID = " + id);
+
+            if (result == 0)
+            {
+                return false;
+            }
+            else
+                return true;
+        }
+
         private string GetUserCRTag(int id)
         {
             var result = connection.ExecuteScalar<string>(@"SELECT CRTag FROM ClashRoyale WHERE UserID = "+id);
+
+            return result;
+        }
+
+        private string GetUserWoWRealm(int id)
+        {
+            var result = connection.ExecuteScalar<string>(@"SELECT Realm FROM Wow WHERE UserID = " + id);
+
+            return result;
+        }
+
+        private string GetUserWoWCharName(int id)
+        {
+            var result = connection.ExecuteScalar<string>(@"SELECT Wowcharname FROM Wow WHERE UserID = " + id);
 
             return result;
         }
