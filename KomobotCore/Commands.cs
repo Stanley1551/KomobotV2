@@ -494,25 +494,37 @@ namespace KomobotV2
                 await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             }
 
-            //[Command("MennyiMount")]
-            //[Description("Sum of the number of aquired mounts.")]
-            //public async Task GetMounts(CommandContext ctx, string server, string name)
-            //{
-            //    logger.Debug(ctx.User.Username + " called wow mennyimount!");
-            //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "mounts", ParameterType.QueryString));
+            [Command("Mount")]
+            [Description("Sum of the number of aquired mounts.")]
+            public async Task GetMounts(CommandContext ctx)
+            {
+                logger.Debug(ctx.User.Username + " called wow MennyiMount!");
+                var service = Program.Container.Resolve<IWoWService>();
+                try
+                {
+                    var response = await service.GetMounts(ctx.User.Username);
 
-            //    var response = await client.ExecuteTaskAsync(new RestRequest());
-            //    if (response.StatusCode == HttpStatusCode.OK)
-            //    {
-            //        CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
+                    await ctx.RespondAsync("Ejha! " + response + " mounttal rendelkezel!");
 
-            //        int numberOfMounts = resp.mounts.numCollected;
+                }
+                catch (ArgumentException) { await ctx.RespondAsync("Nem találni a karaktered adatait! Mentsük el előtte, vagy add ki a parancsot specifikusan!"); return; }
 
-            //        await ctx.RespondAsync("Ejha! " + resp.name + " " + numberOfMounts + " mounttal rendelkezik!");
-            //        return;
-            //    }
-            //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            //}
+            }
+
+            [Command("MennyiMount")]
+            [Description("Sum of the number of aquired mounts.")]
+            public async Task GetMounts(CommandContext ctx, string server, string name)
+            {
+                logger.Debug(ctx.User.Username + " called wow mennyimount!");
+                var service = Program.Container.Resolve<IWoWService>();
+                try
+                {
+                    var response = await service.GetMounts(server, name);
+
+                    await ctx.RespondAsync("Ejha! " + name + " " + response + " mounttal rendelkezik!");
+
+                } catch(Exception) { await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!"); }
+            }
 
             //[Command("Feed")]
             //[Description("Recent activity.")]
@@ -551,27 +563,38 @@ namespace KomobotV2
             //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
             //}
 
-            //[Command("Exa")]
-            //[Description("Number of exalted reputations.")]
-            //public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
-            //{
-            //    logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
+            [Command("Exalted")]
+            [Description("Number of exalted reputations.")]
+            public async Task GetExaltedNumber(CommandContext ctx, string server, string name)
+            {
+                logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
 
+                var service = Program.Container.Resolve<IWoWService>();
 
-            //    var client = await ConstructBlizzardCharClient(server, name, new Parameter("fields", "reputation", ParameterType.QueryString));
+                try
+                {
+                    int retVal = await service.GetExalted(server, name);
 
-            //    var response = await client.ExecuteTaskAsync(new RestRequest());
-            //    if (response.StatusCode == HttpStatusCode.OK)
-            //    {
-            //        var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
+                    await ctx.RespondAsync(name + " karakteren jelenleg " + retVal + " exalted repu van!");
+                } catch (Exception e) { await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!"); logger.Error(e.Message); }
+            }
 
-            //        var numberOfExas = replist.Where(x => x.standing == 7).Count();
+            [Command("Exa")]
+            [Description("Number of exalted reputations.")]
+            public async Task GetExaltedNumber(CommandContext ctx)
+            {
+                logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
 
-            //        await ctx.RespondAsync(name + " karakteren jelenleg " + numberOfExas + " exalted repu van!");
-            //        return;
-            //    }
-            //    await ctx.RespondAsync("Nocsak! Ilyen karaktert nem találni!");
-            //}
+                var service = Program.Container.Resolve<IWoWService>();
+
+                try
+                {
+                    int retVal = await service.GetExalted(ctx.User.Username);
+
+                    await ctx.RespondAsync("Jelenleg " + retVal + " exalted repud van!");
+                }
+                catch (ArgumentException) { await ctx.RespondAsync("Nem találni a karaktered adatait! Mentsük el előtte, vagy add ki a parancsot specifikusan!"); return; }
+            }
         }
         #endregion
 

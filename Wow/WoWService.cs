@@ -2,6 +2,7 @@
 using RestSharp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -55,6 +56,76 @@ namespace Wow
                 return await GetCharInfo(realm, charname);
             }
             else throw new ArgumentException("Charname and/or realm name is not present in the database.");
+        }
+
+        public async Task<int> GetMounts(string realm, string charname)
+        {
+            var client = await ConstructBlizzardCharClient(realm, charname, new Parameter("fields", "mounts", ParameterType.QueryString));
+
+            var response = await client.ExecuteTaskAsync(new RestRequest());
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                CharInfoWithMountResponse resp = JsonConvert.DeserializeObject<CharInfoWithMountResponse>(response.Content);
+
+                int numberOfMounts = resp.mounts.numCollected;
+
+                return numberOfMounts;
+            }
+            else throw new Exception("HttpStatusCode is not OK.");
+
+        }
+        public async Task<int> GetMounts(string username)
+        {
+                string charname;
+                string realm;
+
+                using (KomoBase.KomoBaseAccess kba = new KomoBase.KomoBaseAccess())
+                {
+                    charname = kba.GetWoWCharName(username);
+                    realm = kba.GetWoWRealmName(username);
+                }
+
+                if (!String.IsNullOrEmpty(charname) && !String.IsNullOrEmpty(realm))
+                {
+                    return await GetMounts(realm, charname);
+                }
+                else throw new ArgumentException("Charname and/or realm name is not present in the database.");
+        }
+
+        public async Task<int> GetExalted(string realm, string charname)
+        {
+            var client = await ConstructBlizzardCharClient(realm, charname, new Parameter("fields", "reputation", ParameterType.QueryString));
+
+            var response = await client.ExecuteTaskAsync(new RestRequest());
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                var replist = JsonConvert.DeserializeObject<CharInfoWithRepu>(response.Content).reputation;
+
+                var numberOfExas = replist.Where(x => x.standing == 7).Count();
+
+                return numberOfExas;
+            }
+            else throw new Exception("HttpStatusCode is not OK.");
+        }
+
+        public async Task<int> GetExalted(string username)
+        {
+            string charname;
+            string realm;
+
+            using (KomoBase.KomoBaseAccess kba = new KomoBase.KomoBaseAccess())
+            {
+                charname = kba.GetWoWCharName(username);
+                realm = kba.GetWoWRealmName(username);
+            }
+
+            if (!String.IsNullOrEmpty(charname) && !String.IsNullOrEmpty(realm))
+            {
+                return await GetExalted(realm, charname);
+            }
+            else throw new ArgumentException("Charname and/or realm name is not present in the database.");
+
         }
 
         private async Task<bool> ValidateToken()
@@ -115,7 +186,7 @@ namespace Wow
             }
         }
 
-        private async Task<RestClient> ConstructBlizzardCharClient(string realm, string charname)
+        private async Task<RestClient> ConstructBlizzardCharClient(string realm, string charname, params Parameter[] parameters)
         {
             Token = await RetrieveAuthToken();
 
@@ -123,6 +194,10 @@ namespace Wow
             RestClient client = new RestClient(url);
             client.AddDefaultParameter(new Parameter("locale", "en_US", ParameterType.QueryString));
             client.AddDefaultParameter(new Parameter("access_token", Token, ParameterType.QueryString));
+            foreach(var param in parameters)
+            {
+                client.AddDefaultParameter(param);
+            }
 
             return client;
         }
