@@ -19,11 +19,13 @@ namespace KomoBase
         public void Initialize()
         {
             Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, @"Komobase"));
-            connection.CreateTable(typeof(AuthToken));
+            //connection.CreateTable(typeof(AuthToken));
             connection.CreateTable(typeof(User));
             connection.CreateTable(typeof(Subscription));
             connection.CreateTable(typeof(Wow));
             connection.CreateTable(typeof(ClashRoyale));
+
+            //connection.Insert(new AuthToken());
         }
 
         public void SyncUsers(List<string> userList)

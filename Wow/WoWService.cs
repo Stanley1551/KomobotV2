@@ -23,7 +23,7 @@ namespace Wow
         {
             CharInfoEndpoint = blizzardCharInfoEndpoint;
             OauthAccessTokenEndpoint = blizzardOauthAccessTokenEndpoint;
-            OauthCheckTokenEndpoint = OauthCheckTokenEndpoint;
+            OauthCheckTokenEndpoint = blizzardOauthCheckTokenEndpoint;
             Client_id = client_id;
             Client_secret = client_secret;
         }
@@ -128,14 +128,15 @@ namespace Wow
 
         }
 
-        private async Task<bool> ValidateToken()
+        [Obsolete]
+        private async Task<bool> ValidateToken(string token)
         {
             string resultString = string.Empty;
 
             RestClient client = new RestClient(OauthCheckTokenEndpoint);
-            RestRequest request = new RestRequest(OauthCheckTokenEndpoint, Method.GET, DataFormat.Json);
+            RestRequest request = new RestRequest(OauthCheckTokenEndpoint, Method.POST, DataFormat.Json);
             //ez parameter is a faszért van elírva a dokumentációban
-            request.AddParameter("token", Token);
+            request.AddParameter("token", token);
             var response = await client.ExecuteTaskAsync(request);
 
             if (response.StatusCode == HttpStatusCode.OK)
@@ -164,26 +165,28 @@ namespace Wow
 
         private async Task<string> RetrieveAuthToken()
         {
-            using (KomoBase.KomoBaseAccess kba = new KomoBase.KomoBaseAccess())
-            {
-                var tokenFromDB = kba.GetAuthToken();
+            //using (KomoBase.KomoBaseAccess kba = new KomoBase.KomoBaseAccess())
+            //{
+            //    var tokenFromDB = kba.GetAuthToken();
 
-                if (String.IsNullOrEmpty(tokenFromDB))
-                {
-                    string token = await GetAuthTokenFromBlizzard();
-                    kba.SetAuthToken(token);
-                    return token;
-                }
+            //    if (String.IsNullOrEmpty(tokenFromDB))
+            //    {
+            //        string token = await GetAuthTokenFromBlizzard();
+            //        kba.SetAuthToken(token);
+            //        return token;
+            //    }
 
-                if (await ValidateToken() != true)
-                {
-                    string token = await GetAuthTokenFromBlizzard();
-                    kba.SetAuthToken(token);
-                    return token;
-                }
+            //    if (await ValidateToken(tokenFromDB) != true)
+            //    {
+            //        string token = await GetAuthTokenFromBlizzard();
+            //        kba.SetAuthToken(token);
+            //        return token;
+            //    }
 
-                return tokenFromDB;
-            }
+            //    return tokenFromDB;
+            //}
+
+            return await GetAuthTokenFromBlizzard();
         }
 
         private async Task<RestClient> ConstructBlizzardCharClient(string realm, string charname, params Parameter[] parameters)
