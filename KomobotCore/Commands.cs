@@ -371,12 +371,15 @@ namespace KomobotV2
             logger.Debug(ctx.User.Username + "called Standing!");
             var service = Program.Container.Resolve<IFootballDataService>();
 
-            if (league == string.Empty)
+            if (String.IsNullOrEmpty(league))
             {
                 await ctx.RespondAsync("Paraméterként add meg a liga nevét bogárka!", false, null);
                 await ctx.RespondAsync("Elérhető bajnokságok: " + service.GetLeagueNames());
                 return;
             }
+
+            var leagueList = service.GetLeagueNames().Split(' ').ToList();
+            league = leagueList.Find(x => x.ToLower() == league.ToLower());
 
             var validLeagueName = service.ValidateLeagueName(league);
             if(!validLeagueName)
