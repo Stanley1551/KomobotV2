@@ -29,7 +29,6 @@ namespace KomobotCore
         static CommandsNextModule commands;
         
         public static JsonConfig config;
-        public static UnityContainer Container = new UnityContainer();
 
         static void Main(string[] args)
         {
@@ -43,20 +42,14 @@ namespace KomobotCore
             WebRequest.DefaultWebProxy = null;
             KomoLogger logger = new KomoLogger();
 
-            Container.RegisterType<ICurrencyService, CurrencyService>();
-            Container.RegisterType<IQrCodeCreatorService, QrCodeCreatorService>();
-            Container.RegisterType<IFootballDataService, FootballDataService>();
-            Container.RegisterType<IStravaService, StravaService>();
-            Container.RegisterType<IClashRoyaleService, ClashRoyaleService>();
-
             try
             {
                 config = new JsonParser().Config;
             }
             catch (Exception e) { logger.Fatal("Loading configuration", e); Console.ReadKey(); return; }
 
-            Container.RegisterType<ITwitchService, TwitchService>(new InjectionConstructor(config.twitchClientID, config.twitchAccessToken, config.twitchChannelsToMonitor));
-            Container.RegisterType<IWoWService, WoWService>(new InjectionConstructor(config.blizzardCharInfoEndpoint, config.blizzardOauthAccessTokenEndpoint, config.blizzardOauthCheckTokenEndpoint,
+            ServiceContainer.Container.RegisterType<ITwitchService, TwitchService>(new InjectionConstructor(config.twitchClientID, config.twitchAccessToken, config.twitchChannelsToMonitor));
+            ServiceContainer.Container.RegisterType<IWoWService, WoWService>(new InjectionConstructor(config.blizzardCharInfoEndpoint, config.blizzardOauthAccessTokenEndpoint, config.blizzardOauthCheckTokenEndpoint,
                 config.client_id, config.client_secret));
 
             DiscordClient client = new DiscordClient(new DiscordConfiguration()

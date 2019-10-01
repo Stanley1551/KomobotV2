@@ -23,7 +23,7 @@ using Wow.Enums;
 using System.Threading;
 using Wow.Responses;
 
-namespace KomobotV2
+namespace KomobotCore
 {
     public class Commands
     {
@@ -220,7 +220,7 @@ namespace KomobotV2
         {
             logger.Debug(ctx.User.Username + "called latest!");
 
-            var service = Program.Container.Resolve<ICurrencyService>();
+            var service = ServiceContainer.Container.Resolve<ICurrencyService>();
 
             if(!service.Validate(curr))
             {
@@ -369,7 +369,7 @@ namespace KomobotV2
         public async Task GetLeagueStanding(CommandContext ctx, string league = "")
         {
             logger.Debug(ctx.User.Username + "called Standing!");
-            var service = Program.Container.Resolve<IFootballDataService>();
+            var service = ServiceContainer.Container.Resolve<IFootballDataService>();
 
             if (String.IsNullOrEmpty(league))
             {
@@ -458,7 +458,7 @@ namespace KomobotV2
             public async Task GetCharInfo(CommandContext ctx)
             {
                 logger.Debug(ctx.User.Username + " called WoW KarakterInfo!");
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
                 CharInfoResponse response;
 
                 try
@@ -482,7 +482,7 @@ namespace KomobotV2
             public async Task GetCharInfo(CommandContext ctx, string server, string name)
             {
                 logger.Debug(ctx.User.Username + " called WoW KarakterInfo!");
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
                 
                 var response = await service.GetCharInfo(server, name);
 
@@ -502,7 +502,7 @@ namespace KomobotV2
             public async Task GetMounts(CommandContext ctx)
             {
                 logger.Debug(ctx.User.Username + " called wow MennyiMount!");
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
                 try
                 {
                     var response = await service.GetMounts(ctx.User.Username);
@@ -519,7 +519,7 @@ namespace KomobotV2
             public async Task GetMounts(CommandContext ctx, string server, string name)
             {
                 logger.Debug(ctx.User.Username + " called wow mennyimount!");
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
                 try
                 {
                     var response = await service.GetMounts(server, name);
@@ -572,7 +572,7 @@ namespace KomobotV2
             {
                 logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
 
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
 
                 try
                 {
@@ -588,7 +588,7 @@ namespace KomobotV2
             {
                 logger.Debug(ctx.User.Username + " called " + ctx.Command.Name);
 
-                var service = Program.Container.Resolve<IWoWService>();
+                var service = ServiceContainer.Container.Resolve<IWoWService>();
 
                 try
                 {
@@ -610,7 +610,7 @@ namespace KomobotV2
             [Description("Megnézzük, online-e a stream.")]
             public async Task GetStreamOnline(CommandContext ctx, string channel)
             {
-                 var service = Program.Container.Resolve<ITwitchService>();
+                 var service = ServiceContainer.Container.Resolve<ITwitchService>();
                  var response = await service.GetStreamOnline(channel);
 
                  if(response.Online)
@@ -636,7 +636,7 @@ namespace KomobotV2
             {
                 try
                 {
-                    var service = Program.Container.Resolve<IQrCodeCreatorService>();
+                    var service = ServiceContainer.Container.Resolve<IQrCodeCreatorService>();
                     var result = service.UriToQrCode(url);
 
                     await ctx.RespondWithFileAsync(Path.Combine(Directory.GetCurrentDirectory(),@"temp.jpg"), "Parancsolj!");
@@ -656,7 +656,7 @@ namespace KomobotV2
             [Description("Általános információk.")]
             public async Task StravaInfo(CommandContext ctx, int id)
             {
-                var service = Program.Container.Resolve<IStravaService>();
+                var service = ServiceContainer.Container.Resolve<IStravaService>();
                 var result = await service.StravaInfo(id, Program.config.stravaSecret, Program.config.stravaClientID,
                     Program.config.stravaRefreshToken);
                 await ctx.RespondAsync(result);
