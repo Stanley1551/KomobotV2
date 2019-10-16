@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Currency\Currency.csproj" />
     <ProjectReference Include="..\Football\Football.csproj" />
     <ProjectReference Include="..\KomoBase\KomoBase.csproj" />
+    <ProjectReference Include="..\League\League.csproj" />
     <ProjectReference Include="..\QrCodeCreation\QrCodeCreation.csproj" />
     <ProjectReference Include="..\Strava\Strava.csproj" />
     <ProjectReference Include="..\Twitch\Twitch.csproj" />

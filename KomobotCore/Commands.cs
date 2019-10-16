@@ -22,6 +22,7 @@ using Twitch;
 using Wow.Enums;
 using System.Threading;
 using Wow.Responses;
+using League;
 
 namespace KomobotCore
 {
@@ -210,7 +211,28 @@ namespace KomobotCore
 
         //#endregion
 
+        #region LoL
+        [Group("LOL")]
+        [Description("League of legends related commands.")]
+        public class LOLGroupCommands
+        {
+            [Command("summonerinfo")]
+            [Description("Nagyon alap idéző adatok.")]
+            public async Task GetSummonerInfo(CommandContext ctx, string summonername)
+            {
+                logger.Debug(ctx.User.Username + " called GetSummonerInfo!");
 
+                var service = ServiceContainer.Container.Resolve<ILeagueService>();
+
+                try
+                {
+                    var infoMsg = await service.GetSummonerInfoMsg(summonername);
+                    await ctx.RespondAsync(infoMsg);
+                }
+                catch(Exception e) { await ctx.RespondAsync(e.Message); }
+            }
+        }
+        #endregion
 
         #region currency commands
 

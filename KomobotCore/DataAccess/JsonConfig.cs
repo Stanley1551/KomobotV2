@@ -32,6 +32,7 @@ namespace KomobotCore.DataAccess
             stravaSecret = string.Empty;
             stravaRefreshToken = string.Empty;
             stravaClientID = string.Empty;
+            lolApiKey = string.Empty;
         }
         public string DiscordAPIKey { get; set; }
         public string tutorialdoc { get; set; }
@@ -55,5 +56,6 @@ namespace KomobotCore.DataAccess
         public string stravaSecret { get; set; }
         public string stravaRefreshToken { get; set; }
         public string stravaClientID { get; set; }
+        public string lolApiKey { get; set; }
     }
 }

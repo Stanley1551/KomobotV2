@@ -20,7 +20,6 @@ namespace KomobotCore.DataAccess
                 {
                     string json = r.ReadToEnd();
                     Config = JsonConvert.DeserializeObject<JsonConfig>(json);
-
                 }
             }
             catch(Exception e) { throw e; }
@@ -28,7 +27,6 @@ namespace KomobotCore.DataAccess
 
         public JsonConfig Config 
             {
-            //get; set;
             get { return config; }
             private set 
                 {

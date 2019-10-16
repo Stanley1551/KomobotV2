@@ -21,7 +21,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClashRoyale", "ClashRoyale\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Wow", "Wow\Wow.csproj", "{3206B1E2-F0A4-430E-B78C-72F5099E1B14}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Twitch", "Twitch\Twitch.csproj", "{5E048FA6-A44B-4916-BBCC-24535F2D3234}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Twitch", "Twitch\Twitch.csproj", "{5E048FA6-A44B-4916-BBCC-24535F2D3234}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "League", "League\League.csproj", "{40A59D43-365D-451F-9A77-0E0855280934}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -111,6 +113,14 @@ Global
 		{5E048FA6-A44B-4916-BBCC-24535F2D3234}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5E048FA6-A44B-4916-BBCC-24535F2D3234}.Release|x86.ActiveCfg = Release|Any CPU
 		{5E048FA6-A44B-4916-BBCC-24535F2D3234}.Release|x86.Build.0 = Release|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Debug|x86.Build.0 = Debug|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Release|x86.ActiveCfg = Release|Any CPU
+		{40A59D43-365D-451F-9A77-0E0855280934}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

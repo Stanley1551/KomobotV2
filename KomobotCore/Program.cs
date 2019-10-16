@@ -21,6 +21,7 @@ using Wow;
 using KomobotCore.DataAccess;
 using Twitch;
 using Unity.Injection;
+using League;
 
 namespace KomobotCore
 {
@@ -51,6 +52,7 @@ namespace KomobotCore
             ServiceContainer.Container.RegisterType<ITwitchService, TwitchService>(new InjectionConstructor(config.twitchClientID, config.twitchAccessToken, config.twitchChannelsToMonitor));
             ServiceContainer.Container.RegisterType<IWoWService, WoWService>(new InjectionConstructor(config.blizzardCharInfoEndpoint, config.blizzardOauthAccessTokenEndpoint, config.blizzardOauthCheckTokenEndpoint,
                 config.client_id, config.client_secret));
+            ServiceContainer.Container.RegisterType<ILeagueService, LeagueService>(new InjectionConstructor(config.lolApiKey));
 
             DiscordClient client = new DiscordClient(new DiscordConfiguration()
             {
