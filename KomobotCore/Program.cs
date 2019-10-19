@@ -148,7 +148,7 @@ namespace KomobotCore
 
             client.SocketClosed += async (e) => await DiscordEventHandler.SocketClosed(e);
 
-            
+            client.MessageCreated += async (e) => await DiscordEventHandler.MessageCreated(e, client, config.screenshotChannel);
 
         }
 

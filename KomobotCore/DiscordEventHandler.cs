@@ -139,6 +139,19 @@ namespace KomobotV2
             }
         }
 
+        internal static async Task MessageCreated(MessageCreateEventArgs e, DiscordClient client, string maintainedChannel)
+        {
+            if(e.Channel.Name == maintainedChannel)
+            {
+                if(!e.Message.Attachments.Any())
+                {
+                    var dmChannel = await client.CreateDmAsync(e.Author);
+                    await dmChannel.SendMessageAsync("Hóha! A " + maintainedChannel + " csatornába erősen ajánlott csak képeket küldeni!");
+                    await e.Message.DeleteAsync();
+                }
+            }
+        }
+
         public static async Task Monitor_OnStreamOnline(object sender, OnStreamOnlineArgs e, DiscordClient client, TwitchAPI API)
         {
             try
