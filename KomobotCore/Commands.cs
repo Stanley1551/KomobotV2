@@ -30,8 +30,17 @@ namespace KomobotCore
     {
         private static KomoLogger logger = new KomoLogger();
         private static Stopwatch stopwatch = new Stopwatch();
+        private static DateTime startTime = DateTime.UtcNow;
 
         #region misc
+        [Command("uptime")]
+        public async Task Uptime(CommandContext ctx)
+        {
+            logger.Debug(ctx.User.Username + " called uptime!");
+
+            await ctx.RespondAsync("Ha ennyire érdekel, már " + GetUptimeString() + "futok!");
+        }
+
         [Command("echo")]
         public async Task Echo(CommandContext ctx, string text)
         {
@@ -746,6 +755,18 @@ namespace KomobotCore
             builder.AddField("Achievement points:", response.achievementPoints.ToString());
 
             return builder.Build();
+        }
+
+        private static string GetUptimeString()
+        {
+            StringBuilder sb = new StringBuilder();
+            TimeSpan ts = DateTime.UtcNow - startTime;
+
+            if(ts.Days != 0) sb.AppendFormat("{0} napja, ", ts.Days);
+            sb.AppendFormat("{0} órája, ", ts.Hours);
+            sb.AppendFormat("és {0} perce", ts.Minutes);
+
+            return sb.ToString();
         }
 
        //TODO
