@@ -23,6 +23,8 @@ using Wow.Enums;
 using System.Threading;
 using Wow.Responses;
 using League;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace KomobotCore
 {
@@ -210,6 +212,54 @@ namespace KomobotCore
         //}
 
         //#endregion
+        #region Points
+        [Group("Points")]
+        public class PointsGroupCommands
+        {
+            [Command("mennyi")]
+            public async Task GetPointBalance(CommandContext ctx)
+            {
+                logger.Debug(ctx.User.Username + " called Mennyi!");
+
+                long points = 0;
+
+                try
+                {
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        points = kba.GetPoints(ctx.User.Username);
+                    }
+
+                    await ctx.RespondAsync("Kemény " + points + " pontod van jelenleg!");
+                }
+                catch(Exception e) { await ctx.RespondAsync(e.Message); }
+            }
+
+            [Command("ranglista")]
+            public async Task GetLeaderboard(CommandContext ctx)
+            {
+                logger.Debug(ctx.User.Username + " called ranglista!");
+
+                Dictionary<string, long> dict = new Dictionary<string, long>();
+
+                try
+                {
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
+                    {
+                        dict = kba.GetLeaderboard();
+                        
+                    }
+
+                    string msg = ConstructLeaderboardString(dict);
+                    await ctx.RespondAsync(msg);
+                }
+                catch(Exception e) { await ctx.RespondAsync(e.Message); }
+            }
+
+            
+        }
+        #endregion
+
 
         #region LoL
         [Group("LOL")]
@@ -730,6 +780,19 @@ namespace KomobotCore
         #endregion
 
         #region private methods     
+
+        private static string ConstructLeaderboardString(Dictionary<string, long> dict)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            int rank = 1;
+            foreach(var item in dict)
+            {
+                sb.AppendLine(rank++ + ". " + item.Key + " " + item.Value + " pont");
+            }
+
+            return sb.ToString();
+        }
 
         private static DiscordEmbed GetWowCharInfoEmbed(CharInfoResponse response)
         {

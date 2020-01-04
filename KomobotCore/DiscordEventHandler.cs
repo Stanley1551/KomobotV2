@@ -41,28 +41,38 @@ namespace KomobotV2
 
         public static async Task PresenceUpdated(PresenceUpdateEventArgs e, DiscordClient client)
         {
-            try
+            if (!e.Member.IsBot)
             {
-                using (KomoBaseAccess kba = new KomoBaseAccess())
+                try
                 {
-                    bool subStatus = kba.SubStatus(e.Member.Username);
-
-                    if (subStatus == true)
+                    using (KomoBaseAccess kba = new KomoBaseAccess())
                     {
-                        //if just started playing
-                        if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
+                        bool subStatus = kba.SubStatus(e.Member.Username);
+
+                        bool isStopped = (e.Game == null || e.Game.Name == null || e.Game.Name == string.Empty) && gameStartedDictionary.ContainsKey(e.Member);
+                        int points = 0;
+                        string msg = string.Empty;
+                        //add points
+                        if (isStopped)
                         {
-                            gameStartedDictionary.Add(e.Member, DateTime.Now);
+                            msg = GetTimeLapsedString(DateTime.Now, gameStartedDictionary[e.Member], out points);
+                            kba.AddPoints(e.Member.Username, points);
                         }
-                        //if ended 
-                        else if (e.Game == null || e.Game.Name == null || e.Game.Name == string.Empty)
+
+                        if (subStatus == true)
                         {
-                            if (gameStartedDictionary.ContainsKey(e.Member))
+                            //if just started playing
+                            if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
+                            {
+                                gameStartedDictionary.Add(e.Member, DateTime.Now);
+                            }
+                            //if ended 
+                            else if (isStopped)
                             {
                                 DiscordDmChannel dm = await client.CreateDmAsync(e.Member);
 
                                 await client.SendMessageAsync(dm, "No! Ennyit függtél most: " +
-                                    GetTimeLapsedString(DateTime.Now, gameStartedDictionary[e.Member]),
+                                    msg,
                                     false, null);
 
                                 gameStartedDictionary.Remove(e.Member);
@@ -70,8 +80,8 @@ namespace KomobotV2
                         }
                     }
                 }
+                catch (Exception ex) { logger.Error(DateTime.UtcNow.ToString() + ": " + ex.Message); }
             }
-            catch (Exception ex) { logger.Error(DateTime.UtcNow.ToString() + ": " + ex.Message); }
         }
 
         public static async Task GuildMemberRemoved(GuildMemberRemoveEventArgs e, DiscordClient client)
@@ -141,15 +151,19 @@ namespace KomobotV2
 
         internal static async Task MessageCreated(MessageCreateEventArgs e, DiscordClient client, string maintainedChannel)
         {
-            if(e.Channel.Name == maintainedChannel)
+            try
             {
-                if(!e.Message.Attachments.Any())
+                if (e.Channel.Name != null && e.Channel.Name == maintainedChannel)
                 {
-                    var dmChannel = await client.CreateDmAsync(e.Author);
-                    await dmChannel.SendMessageAsync("Hóha! A " + maintainedChannel + " csatornába erősen ajánlott csak képeket küldeni!");
-                    await e.Message.DeleteAsync();
+                    if (!e.Message.Attachments.Any())
+                    {
+                        var dmChannel = await client.CreateDmAsync(e.Author);
+                        await dmChannel.SendMessageAsync("Hóha! A " + maintainedChannel + " csatornába erősen ajánlott csak képeket küldeni!");
+                        await e.Message.DeleteAsync();
+                    }
                 }
-            }
+            }catch(Exception ex) { Console.WriteLine(ex.Message); }
+            
         }
 
         public static async Task Monitor_OnStreamOnline(object sender, OnStreamOnlineArgs e, DiscordClient client, TwitchAPI API)
@@ -186,11 +200,12 @@ namespace KomobotV2
         #endregion
 
         #region private methods
-        private static string GetTimeLapsedString(DateTime to, DateTime from)
+        private static string GetTimeLapsedString(DateTime to, DateTime from,out int points)
         {
             StringBuilder sb = new StringBuilder();
             var timelapsed = to - from;
             sb = sb.Append(timelapsed.Hours + "óra " + timelapsed.Minutes + "perc " + timelapsed.Seconds + "másodperc ");
+            points = timelapsed.Minutes;
 
             return sb.ToString();
         }

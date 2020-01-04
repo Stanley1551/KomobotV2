@@ -1,6 +1,7 @@
 ﻿using KomoBase.Models;
 using SQLite;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -24,6 +25,7 @@ namespace KomoBase
             connection.CreateTable(typeof(Subscription));
             connection.CreateTable(typeof(Wow));
             connection.CreateTable(typeof(ClashRoyale));
+            connection.CreateTable(typeof(Points));
 
             //connection.Insert(new AuthToken());
         }
@@ -80,6 +82,43 @@ namespace KomoBase
             else
             {
                 connection.Insert(sub, typeof(Subscription));
+            }
+        }
+
+        public void AddPoints(string username, int points)
+        {
+            long currentPoints = 0;
+            int id = GetUserID(username);
+
+            if(UserExistsInPointsTable(id,out currentPoints))
+            {
+                connection.Update(new Points()
+                {
+                    Balance = currentPoints + points,
+                    UserID = id
+                });
+            }
+            else
+            {
+                connection.Insert(new Points()
+                {
+                    Balance = points,
+                    UserID = id
+                });
+            }
+        }
+
+        public long GetPoints(string username)
+        {
+            int id = GetUserID(username);
+
+            if(UserExistsInPointsTable(id))
+            {
+                return connection.Get<Points>(id).Balance;
+            }
+            else
+            {
+                return 0;
             }
         }
 
@@ -257,6 +296,50 @@ namespace KomoBase
             return connection.ExecuteScalar<bool>(@"SELECT IsSubscribed FROM Subscription WHERE UserID = " + userid);
 
 
+        }
+
+        private bool UserExistsInPointsTable(int id)
+        {
+            var row = connection.Get<Points>(id);
+
+            if (row == null)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        public Dictionary<string, long> GetLeaderboard()
+        {
+            Dictionary<string, long> dict = new Dictionary<string, long>(3);
+            var result = connection.Query<Points>(@"SELECT UserID, Balance FROM Points ORDER BY Balance desc");
+            
+            if (result != null)
+            {
+                result.ForEach(x => dict.Add(GetUserByID(x.UserID).UserName, x.Balance));
+                return dict;
+            }
+            throw new Exception("Nincs egyelőre pont bejegyzés!");
+        }
+
+        private bool UserExistsInPointsTable(int id, out long currentPoints)
+        {
+            currentPoints = 0;
+
+            var result = connection.ExecuteScalar<int>(@"SELECT UserID FROM Points WHERE UserID = " + id);
+
+            if (result == 0)
+            {
+                return false;
+            }
+            else
+            {
+                currentPoints = connection.Get<Points>(id).Balance;
+                return true;
+            }
         }
 
         private bool UserExistsInCRTable(int id)
