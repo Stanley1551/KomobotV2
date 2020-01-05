@@ -58,25 +58,24 @@ namespace KomobotV2
                             msg = GetTimeLapsedString(DateTime.Now, gameStartedDictionary[e.Member], out points);
                             kba.AddPoints(e.Member.Username, points);
                         }
-
-                        if (subStatus == true)
+                        //if just started playing
+                        if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
                         {
-                            //if just started playing
-                            if (e.Game != null && e.Game.Name != null && !gameStartedDictionary.ContainsKey(e.Member) && (e.PresenceBefore.Game == null || e.PresenceBefore.Game.Name == string.Empty))
-                            {
-                                gameStartedDictionary.Add(e.Member, DateTime.Now);
-                            }
-                            //if ended 
-                            else if (isStopped)
-                            {
-                                DiscordDmChannel dm = await client.CreateDmAsync(e.Member);
+                            gameStartedDictionary.Add(e.Member, DateTime.Now);
+                        }
+                        //if ended 
+                        else if (isStopped)
+                        {
+                            gameStartedDictionary.Remove(e.Member);
+                        }
 
-                                await client.SendMessageAsync(dm, "No! Ennyit függtél most: " +
-                                    msg,
-                                    false, null);
+                        if (subStatus == true && isStopped)
+                        {
+                            DiscordDmChannel dm = await client.CreateDmAsync(e.Member);
 
-                                gameStartedDictionary.Remove(e.Member);
-                            }
+                            await client.SendMessageAsync(dm, "No! Ennyit függtél most: " +
+                                msg,
+                                false, null);
                         }
                     }
                 }
@@ -205,7 +204,7 @@ namespace KomobotV2
             StringBuilder sb = new StringBuilder();
             var timelapsed = to - from;
             sb = sb.Append(timelapsed.Hours + "óra " + timelapsed.Minutes + "perc " + timelapsed.Seconds + "másodperc ");
-            points = timelapsed.Minutes;
+            points = timelapsed.Minutes + timelapsed.Hours*60;
 
             return sb.ToString();
         }
