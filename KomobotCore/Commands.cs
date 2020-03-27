@@ -25,6 +25,9 @@ using Wow.Responses;
 using League;
 using System.Collections;
 using System.Collections.Generic;
+using Corona;
+using Corona.ResponseModels;
+using System.Text.RegularExpressions;
 
 namespace KomobotCore
 {
@@ -788,7 +791,74 @@ namespace KomobotCore
         }
         #endregion
 
+        #region Corona commands
+        [Group("Corona")]
+        [Description("COVID-19-es lekérdezések.")]
+        public class CoronaCommands
+        {
+            [Command("all")]
+            public async Task GetOverallCases(CommandContext ctx)
+            {
+                try
+                {
+                    var service = ServiceContainer.Container.Resolve<ICoronaService>();
+                    var response = await service.GetOverallCases();
+
+                    var embed = ContructEmbedForOverallCases(response);
+                    await ctx.RespondAsync(embed: embed);
+                }
+                catch (Exception e) { await ctx.RespondAsync(e.Message); }
+            }
+
+            [Command("country")]
+            [Description("Az orszagspecifikus adatok")]
+            public async Task GetCountrySpecificCases(CommandContext ctx, string country)
+            {
+                //orszag validalas
+                if(!Regex.Match(country, @"[a-zA-Z]").Success)
+                {
+                    await ctx.RespondAsync("Hibás országnév!");
+                }
+
+                try
+                {
+                    var service = ServiceContainer.Container.Resolve<ICoronaService>();
+                    var response = await service.GetCountrySpecificCases(country);
+
+                    var embed = ContructEmbedForCountryCases(response);
+                    await ctx.RespondAsync(embed: embed);
+                }
+                catch (Exception e) { await ctx.RespondAsync(e.Message); }
+            }
+        }
+        #endregion
+
         #region private methods     
+
+        private static DiscordEmbed ContructEmbedForCountryCases(CountryCasesResponse response)
+        {
+            var builder = new DiscordEmbedBuilder
+            {
+                Title = response.country,
+                ThumbnailUrl = response.countryInfo.flag,
+                Timestamp = DateTime.Now,
+                Description = "Összes esetek: " + response.cases + "\n Felépült: " + response.recovered + "\n Halálozás: " + response.deaths
+            };
+
+            return builder.Build();
+        }
+
+        private static DiscordEmbed ContructEmbedForOverallCases(OverallCasesResponse response)
+        {
+            var builder = new DiscordEmbedBuilder
+            {
+                Title = "Összes COVID-19 eset",
+                Timestamp = DateTime.Now,
+                Description = "Összes esetek:" + response.cases + "\n Felépült: " + response.recovered + "\n Halálozás: " + response.deaths
+            };
+
+            return builder.Build();
+        }
 
         private static string ConstructLeaderboardString(Dictionary<string, long> dict)
         {

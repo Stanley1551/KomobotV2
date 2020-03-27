@@ -22,6 +22,7 @@ using KomobotCore.DataAccess;
 using Twitch;
 using Unity.Injection;
 using League;
+using Corona;
 
 namespace KomobotCore
 {
@@ -48,11 +49,13 @@ namespace KomobotCore
                 config = new JsonParser().Config;
             }
             catch (Exception e) { logger.Fatal("Loading configuration", e); Console.ReadKey(); return; }
-
+            
             ServiceContainer.Container.RegisterType<ITwitchService, TwitchService>(new InjectionConstructor(config.twitchClientID, config.twitchAccessToken, config.twitchChannelsToMonitor));
             ServiceContainer.Container.RegisterType<IWoWService, WoWService>(new InjectionConstructor(config.blizzardCharInfoEndpoint, config.blizzardOauthAccessTokenEndpoint, config.blizzardOauthCheckTokenEndpoint,
                 config.client_id, config.client_secret));
             ServiceContainer.Container.RegisterType<ILeagueService, LeagueService>(new InjectionConstructor(config.lolApiKey));
+            ServiceContainer.Container.RegisterType<ICoronaService, CoronaService>(new InjectionConstructor(config.coronaUrl));
+
 
             DiscordClient client = new DiscordClient(new DiscordConfiguration()
             {

@@ -3,6 +3,7 @@ using Currency;
 using Football;
 using QrCodeCreation;
 using Strava;
+using Corona;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -14,6 +15,7 @@ namespace KomobotCore
     {
         internal static UnityContainer Container = new UnityContainer();
 
+        //place for registration without constructorInjecion
         static ServiceContainer()
         {
             Container.RegisterType<ICurrencyService, CurrencyService>();
