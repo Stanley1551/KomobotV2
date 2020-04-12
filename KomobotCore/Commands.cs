@@ -35,7 +35,8 @@ namespace KomobotCore
     {
         private static KomoLogger logger = new KomoLogger();
         private static Stopwatch stopwatch = new Stopwatch();
-        private static DateTime startTime = DateTime.UtcNow;
+
+        internal static DateTime startTime = DateTime.UtcNow;
 
         #region misc
         [Command("uptime")]
@@ -825,7 +826,7 @@ namespace KomobotCore
                     var service = ServiceContainer.Container.Resolve<ICoronaService>();
                     var response = await service.GetCountrySpecificCases(country);
 
-                    var embed = ContructEmbedForCountryCases(response);
+                    var embed = ConstructEmbedForCountryCases(response);
                     await ctx.RespondAsync(embed: embed);
                 }
                 catch (Exception e) { await ctx.RespondAsync(e.Message); }
@@ -835,7 +836,7 @@ namespace KomobotCore
 
         #region private methods     
 
-        private static DiscordEmbed ContructEmbedForCountryCases(CountryCasesResponse response)
+        private static DiscordEmbed ConstructEmbedForCountryCases(CountryCasesResponse response)
         {
             var builder = new DiscordEmbedBuilder
             {

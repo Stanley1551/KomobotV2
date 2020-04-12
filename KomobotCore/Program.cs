@@ -127,6 +127,8 @@ namespace KomobotCore
                 }
             }
 
+            Commands.startTime = DateTime.UtcNow;
+
             WireUpEvents(client);
 
 
